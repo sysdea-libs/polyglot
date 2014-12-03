@@ -8,6 +8,9 @@ defmodule MessageFormat do
 
       use MessageFormat.Plural
       import MessageFormat
+
+      defp ensure_string(n) when is_bitstring(n), do: n
+      defp ensure_string(n), do: inspect(n)
     end
   end
 
@@ -108,19 +111,14 @@ defmodule MessageFormat do
   end
   defp parse_clause(tokens), do: tokens
 
+  # include formatters
+  use MessageFormat.SelectFormat
+  use MessageFormat.OrdinalFormat
+  use MessageFormat.PluralFormat
+  use MessageFormat.RangeFormat
+
   # recognise select/plural formatters
-  defp formatter([arg, "select", :comma|body]) do
-    {:select, arg, extract(body)}
-  end
-  defp formatter([arg, "selectordinal", :comma|body]) do
-    {:selectordinal, arg, extract(body)}
-  end
-  defp formatter([arg, "plural", :comma|body]) do
-    {:plural, arg, extract(body)}
-  end
-  defp formatter([arg, "range", :comma|body]) do
-    {:range, arg, extract(body)}
-  end
+
   defp formatter(tokens), do: tokens
 
   # Transform a list of tokens into a map
@@ -155,79 +153,6 @@ defmodule MessageFormat do
     tokens
     |> Enum.map(fn (t) -> compile(t, env) end)
     |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
-  end
-
-  def compile({:select, arg, m}, env) do
-    arg = arg |> String.downcase |> String.to_atom
-    accessor = quote do
-      unquote(var(:args))[unquote(arg)]
-    end
-
-    clauses = Enum.map(m, fn({k, v}) ->
-      {:->, [], [[k], compile(v, env)]}
-    end)
-
-    quote do
-      case unquote(accessor) do
-        unquote(clauses)
-      end
-    end
-  end
-
-  def compile({:selectordinal, arg, m}, env) do
-    arg = arg |> String.downcase |> String.to_atom
-    accessor = quote do
-      unquote(var(:args))[unquote(arg)]
-    end
-    printer = quote do: inspect(unquote(accessor))
-
-    clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
-    end)
-
-    quote do
-      case plural(unquote(env.lang), unquote(accessor), :ordinal) do
-        unquote(clauses)
-      end
-    end
-  end
-
-  def compile({:plural, arg, m}, env) do
-    arg = arg |> String.downcase |> String.to_atom
-    accessor = quote do
-      unquote(var(:args))[unquote(arg)]
-    end
-    printer = quote do: inspect(unquote(accessor))
-
-    clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
-    end)
-
-    quote do
-      case plural(unquote(env.lang), unquote(accessor), :cardinal) do
-        unquote(clauses)
-      end
-    end
-  end
-
-  def compile({:range, arg, m}, env) do
-    arg = arg |> String.downcase |> String.to_atom
-    accessor = quote do
-      unquote(var(:args))[unquote(arg)]
-    end
-    printer = quote do
-      inspect(elem(unquote(accessor), 0)) <> "-" <> inspect(elem(unquote(accessor), 1))
-    end
-
-    clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
-    end)
-
-    quote do
-      case plural(unquote(env.lang), unquote(accessor), :range) do
-        unquote(clauses)
-      end
-    end
   end
 
   def compile(:hash, env) do
