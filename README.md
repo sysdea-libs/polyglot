@@ -11,3 +11,5 @@ WIP
 - [x] Ordinal pluralisation
 - [ ] Range pluralisation
 - [ ] Compile from standalone files as well as embedded strings
+- [ ] Lint plural and selectordinal to check cases covered.
+- [ ] Lint select cases somehow (maybe by comparing to a canonical language?)
