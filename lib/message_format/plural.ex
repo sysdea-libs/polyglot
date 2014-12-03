@@ -84,16 +84,22 @@ defmodule MessageFormat.Plural do
     end
   end
 
-  # TODO: take into account decimal format of target language
   # TODO: strip currency/thousands separators?
+  # Would need knowledge of different number formats based on lang.
   defp n_to_number(n) do
     quote do
-      if String.contains?(unquote(n), ".") do
-        {f, ""} = Float.parse(unquote(n))
-        f
-      else
-        {i, ""} = Integer.parse(unquote(n))
-        i
+      cond do
+        String.contains?(unquote(n), ".") ->
+          {f, ""} = Float.parse(unquote(n))
+          f
+        String.contains?(unquote(n), ",") ->
+          {f, ""} = unquote(n)
+                    |> String.replace(",", ".")
+                    |> Float.parse
+          f
+        true ->
+          {i, ""} = Integer.parse(unquote(n))
+          i
       end
     end
   end
@@ -102,9 +108,10 @@ defmodule MessageFormat.Plural do
   defp var(name), do: {name, [], :plural}
 
   # Shared structure for v/f/t
+  # TODO: see note on n_to_number on separators
   defp after_decimal do
     quote do: unquote(var(:string_n))
-              |> String.split(".")
+              |> String.split(~r/\.|,/)
               |> Enum.at(1) || ""
   end
 

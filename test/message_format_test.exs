@@ -113,8 +113,8 @@ defmodule MessageFormatTest do
            == "0-1 den."
     assert MessageFormatTest.C.t!("cs", "range", %{range: {2,4}})
            == "2-4 dny."
-    assert MessageFormatTest.C.t!("cs", "range", %{range: {2,"3.50"}})
-           == "2-3.50 dne."
+    assert MessageFormatTest.C.t!("cs", "range", %{range: {2,"3,50"}})
+           == "2-3,50 dne."
     assert MessageFormatTest.C.t!("cs", "range", %{range: {0,5}})
            == "0-5 dní."
   end
