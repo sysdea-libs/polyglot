@@ -134,7 +134,7 @@ defmodule Polyglot do
     end
   end
 
-  # Parse tokens out into an ast
+  # Parse tokens out into nested lists of list|tuple|string|atom
   defp parse_tree(tokens, olist) do
     case tokens do
       [:open | rest] ->
@@ -150,8 +150,8 @@ defmodule Polyglot do
     end
   end
 
-  # takes a bracketed clause and returns either a string or a
-  # tuple describing the operation
+  # takes a bracketed clause and returns either the list of tokens back or a
+  # tuple describing a formatting node
   defp parse_clause([op1, :comma, op2 | rest]) do
     command = String.strip(op2)
     formatter([op1, command | rest])
@@ -164,11 +164,10 @@ defmodule Polyglot do
   use Polyglot.PluralFormat
   use Polyglot.RangeFormat
 
-  # recognise select/plural formatters
-
   defp formatter(tokens), do: tokens
 
   # Transform a list of tokens into a map
+  # Helper function used by the Formatters
   # [a b c d] -> %{"a"=>"b", "c"=>"d"}
   defp extract(tokens) do
     tokens
@@ -195,21 +194,15 @@ defmodule Polyglot do
     |> Enum.reverse
   end
 
-  # Recursively compile lists
+  # Generic recursive compile for lists and possibly stranded tokens
   def compile(tokens, env) when is_list(tokens) do
     tokens
     |> Enum.map(fn (t) -> compile(t, env) end)
     |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
   end
-
   def compile(:hash, env) do
-    if Map.has_key?(env, :printer) do
-      env.printer
-    else
-      "#"
-    end
+    if Map.has_key?(env, :printer), do: env.printer, else: "#"
   end
-
   def compile(:comma, _env), do: ","
   def compile(s, _env) when is_bitstring(s), do: s
 end
