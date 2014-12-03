@@ -10,7 +10,7 @@ WIP
 - [x] Cardinal pluralisation (default)
 - [x] Ordinal pluralisation
 - [x] Range pluralisation
-- [ ] Compile from standalone files as well as embedded strings
+- [x] Compile from standalone files as well as embedded strings
 - [ ] Lint plural/ordinal/range to check cases covered.
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?).
 - [x] Accept strings for plural/ordinal/range.

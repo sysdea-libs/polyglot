@@ -39,16 +39,62 @@ defmodule MessageFormat do
 
   # defines a name(lang, key, options) function
   # eg compile_string(:t!, "en", "test", "my test string")
-  defmacro compile_string(name, lang, key, string) do
-    compiled = MessageFormat.compile(MessageFormat.parse(string), %{lang: lang})
+  defmacro function_from_string(name, lang, key, string) do
+    quote bind_quoted: binding do
+      {args, body} = compile_string(lang, key, string)
+      @plurals lang
+      @translate_fns name
+      def unquote(name)(unquote_splicing(args)), do: unquote(body)
+    end
+  end
 
-    quote do
-      @plurals unquote(lang)
-      @translate_fns unquote(name)
-      def unquote(name)(unquote(lang), unquote(key), unquote(var(:args))) do
-        String.strip(unquote(compiled))
+  defmacro functions_from_file(name, path) do
+    quote bind_quoted: binding do
+      for {lang, key, string} <- MessageFormat.load_file(path) do
+        { args, body } = compile_string(lang, key, string)
+        @plurals lang
+        @translate_fns name
+        def unquote(name)(unquote_splicing(args)), do: unquote(body)
       end
     end
+  end
+
+  def compile_string(lang, key, string) do
+    compiled = MessageFormat.compile(MessageFormat.parse(string), %{lang: lang})
+
+    { [lang, key, var(:args)], quote(do: String.strip(unquote(compiled))) }
+  end
+
+  def load_file(path) do
+    {:ok, file_contents} = :file.read_file(path)
+    lines = String.split(file_contents, ~r/\r?\n/)
+
+    { lang, messages, name, buffer } =
+      Enum.reduce(lines, { nil, [], nil, nil }, &parse_line(&1, &2))
+
+    [{ lang, name, String.strip(buffer) }|messages]
+  end
+
+  defp parse_line(<<"LANG=", lang::binary>>, { _lang, [], nil, nil }) do
+    { String.strip(lang), [], nil, nil }
+  end
+  defp parse_line(<<"LANG=", newlang::binary>>, { lang, messages, name, buffer }) do
+    { String.strip(newlang), [{ lang, name, String.strip(buffer) }|messages], nil, nil }
+  end
+  defp parse_line(<<"@", newname::binary>>, { lang, messages, nil, nil }) do
+    { lang, messages, newname, "" }
+  end
+  defp parse_line(<<"@", newname::binary>>, { lang, messages, name, buffer }) do
+    { lang, [{ lang, name, String.strip(buffer) }|messages], newname, "" }
+  end
+  defp parse_line(<<"--", _commented::binary>>, state) do
+    state
+  end
+  defp parse_line(_line, { lang, messages, nil, nil }) do
+    { lang, messages, nil, nil }
+  end
+  defp parse_line(line, { lang, messages, name, buffer }) do
+    { lang, messages, name, buffer <> "\n" <> line }
   end
 
   # Parse a string to an ast

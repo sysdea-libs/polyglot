@@ -1,0 +1,13 @@
+LANG=en
+
+This is a comment that precedes the strings.
+
+@test message
+Hello from the translator.
+
+-- and this is a comment inbetween strings
+
+@test message 2
+{NUM, plural,
+    one {one item}
+  other {# items}}
