@@ -1,11 +1,11 @@
-defmodule MessageFormat.Plural do
+defmodule Polyglot.Plural do
   require Record
   Record.defrecordp :xmlAttribute, Record.extract(:xmlAttribute, from_lib: "xmerl/include/xmerl.hrl")
   Record.defrecordp :xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl")
 
   defmacro __using__(_env) do
     quote do
-      @before_compile MessageFormat.Plural
+      @before_compile Polyglot.Plural
       Module.register_attribute(__MODULE__, :plurals, accumulate: true)
     end
   end
@@ -137,7 +137,7 @@ defmodule MessageFormat.Plural do
 
   # Load a langs plurals from the XML
   defp load_plural_file(lang, file) do
-    xml = xml_file(:code.priv_dir(:message_format) ++ file)
+    xml = xml_file(:code.priv_dir(:polyglot) ++ file)
     qs = "//pluralRules[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRule"
     for el <- q(qs, xml) do
       [xmlAttribute(value: count)] = q("./@count", el)
@@ -146,7 +146,7 @@ defmodule MessageFormat.Plural do
     end
   end
   defp load_range_file(lang, file) do
-    xml = xml_file(:code.priv_dir(:message_format) ++ file)
+    xml = xml_file(:code.priv_dir(:polyglot) ++ file)
     qs = "//pluralRanges[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRange"
     for el <- q(qs, xml) do
       [xmlAttribute(value: result)] = q("./@result", el)

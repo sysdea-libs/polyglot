@@ -1,17 +1,17 @@
-defmodule MessageFormat.Mixfile do
+defmodule Polyglot.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :message_format,
+    [app: :polyglot,
      version: "0.0.1",
      elixir: "~> 1.0",
      deps: deps,
      package: [
       contributors: ["Chris Spencer"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/strategydynamics/message_format"}
+      links: %{github: "https://github.com/strategydynamics/polyglot"}
      ],
-     description: "MessageFormat implementation (Select/Plural) for i18n."]
+     description: "MessageFormat-like implementation (Select/Plural/Range/Ordinal) for i18n."]
   end
 
   # Configuration for the OTP application

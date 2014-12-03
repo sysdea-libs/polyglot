@@ -1,13 +1,13 @@
-defmodule MessageFormat do
-  require MessageFormat.Plural
+defmodule Polyglot do
+  require Polyglot.Plural
 
   defmacro __using__(_env) do
     quote do
-      @before_compile MessageFormat
+      @before_compile Polyglot
       Module.register_attribute(__MODULE__, :translate_fns, accumulate: true)
 
-      use MessageFormat.Plural
-      import MessageFormat
+      use Polyglot.Plural
+      import Polyglot
 
       defp ensure_string(n) when is_bitstring(n), do: n
       defp ensure_string(n), do: inspect(n)
@@ -50,7 +50,7 @@ defmodule MessageFormat do
 
   defmacro functions_from_file(name, path) do
     quote bind_quoted: binding do
-      for {lang, key, string} <- MessageFormat.load_file(path) do
+      for {lang, key, string} <- Polyglot.load_file(path) do
         { args, body } = compile_string(lang, key, string)
         @plurals lang
         @translate_fns name
@@ -60,7 +60,7 @@ defmodule MessageFormat do
   end
 
   def compile_string(lang, key, string) do
-    compiled = MessageFormat.compile(MessageFormat.parse(string), %{lang: lang})
+    compiled = Polyglot.compile(Polyglot.parse(string), %{lang: lang})
 
     { [lang, key, var(:args)], quote(do: String.strip(unquote(compiled))) }
   end
@@ -159,10 +159,10 @@ defmodule MessageFormat do
   defp parse_clause(tokens), do: tokens
 
   # include formatters
-  use MessageFormat.SelectFormat
-  use MessageFormat.OrdinalFormat
-  use MessageFormat.PluralFormat
-  use MessageFormat.RangeFormat
+  use Polyglot.SelectFormat
+  use Polyglot.OrdinalFormat
+  use Polyglot.PluralFormat
+  use Polyglot.RangeFormat
 
   # recognise select/plural formatters
 

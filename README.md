@@ -1,6 +1,6 @@
-# MessageFormat
+# Polyglot
 
-An implementation of MessageFormat (PluralFormat + SelectFormat) in Elixir, for the purposes of translation when plural and gender forms are needed, especially when used together inside sentences ("She found 3 categories in one result").
+An implementation of a MessageFormat-like string interpolator (PluralFormat + SelectFormat) in Elixir, for the purposes of translation when plural and gender forms are needed, especially when used together inside sentences ("She found 3 categories in one result"). Features ordinal/range extensions in addition to cardinal plurality and selection.
 
 WIP
 

@@ -1,4 +1,4 @@
-defmodule MessageFormat.OrdinalFormat do
+defmodule Polyglot.OrdinalFormat do
 
   defmacro __using__(_env) do
     quote do

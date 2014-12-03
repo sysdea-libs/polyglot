@@ -1,4 +1,4 @@
-defmodule MessageFormat.SelectFormat do
+defmodule Polyglot.SelectFormat do
 
   defmacro __using__(_env) do
     quote do
