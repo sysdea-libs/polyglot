@@ -7,8 +7,6 @@ defmodule MessageFormat.Plural do
     quote do
       @before_compile MessageFormat.Plural
       Module.register_attribute(__MODULE__, :plurals, accumulate: true)
-
-      defp plural(lang, n), do: plural(lang, n, :cardinal)
     end
   end
 
