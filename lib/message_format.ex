@@ -65,6 +65,7 @@ defmodule MessageFormat do
     { [lang, key, var(:args)], quote(do: String.strip(unquote(compiled))) }
   end
 
+  # Load a file into [{ lang, name, string }, ...]
   def load_file(path) do
     {:ok, file_contents} = :file.read_file(path)
     lines = String.split(file_contents, ~r/\r?\n/)
@@ -82,10 +83,10 @@ defmodule MessageFormat do
     { String.strip(newlang), [{ lang, name, String.strip(buffer) }|messages], nil, nil }
   end
   defp parse_line(<<"@", newname::binary>>, { lang, messages, nil, nil }) do
-    { lang, messages, newname, "" }
+    { lang, messages, String.strip(newname), "" }
   end
   defp parse_line(<<"@", newname::binary>>, { lang, messages, name, buffer }) do
-    { lang, [{ lang, name, String.strip(buffer) }|messages], newname, "" }
+    { lang, [{ lang, name, String.strip(buffer) }|messages], String.strip(newname), "" }
   end
   defp parse_line(<<"--", _commented::binary>>, state) do
     state
