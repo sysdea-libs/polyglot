@@ -30,6 +30,14 @@ defmodule MessageFormatTest.Compiled do
               other {# Ergebnisse}
             }.
   """
+
+  compile_string :t!, "en", "selectordinal", """
+  You came in {PLACE, selectordinal,
+                  one {#st}
+                  two {#nd}
+                  few {#rd}
+                other {#th}} place.
+  """
 end
 
 defmodule MessageFormatTest do
@@ -55,5 +63,16 @@ defmodule MessageFormatTest do
     assert MessageFormatTest.Compiled.t!("de", "select+plural",
                                          %{gender: "other", num_categories: 0, num_results: 5})
            == "Sie fand 0 Kategorien in 5 Ergebnisse."
+  end
+
+  test "compile_string selectordinal" do
+    assert MessageFormatTest.Compiled.t!("en", "selectordinal", %{place: 1})
+           == "You came in 1st place."
+    assert MessageFormatTest.Compiled.t!("en", "selectordinal", %{place: 22})
+           == "You came in 22nd place."
+    assert MessageFormatTest.Compiled.t!("en", "selectordinal", %{place: 103})
+           == "You came in 103rd place."
+    assert MessageFormatTest.Compiled.t!("en", "selectordinal", %{place: 7})
+           == "You came in 7th place."
   end
 end

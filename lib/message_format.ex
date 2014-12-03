@@ -31,6 +31,9 @@ defmodule MessageFormat do
     end
   end
 
+  # Helper function to generate var references
+  defp var(name), do: {name, [], :plural}
+
   # defines a name(lang, key, options) function
   # eg compile_string(:t!, "en", "test", "my test string")
   defmacro compile_string(name, lang, key, string) do
@@ -39,7 +42,7 @@ defmodule MessageFormat do
     quote do
       @plurals unquote(lang)
       @translate_fns unquote(name)
-      def unquote(name)(unquote(lang), unquote(key), unquote({:args, [], Elixir})) do
+      def unquote(name)(unquote(lang), unquote(key), unquote(var(:args))) do
         String.strip(unquote(compiled))
       end
     end
@@ -109,6 +112,9 @@ defmodule MessageFormat do
   defp formatter([arg, "select", :comma|body]) do
     {:select, arg, extract(body)}
   end
+  defp formatter([arg, "selectordinal", :comma|body]) do
+    {:selectordinal, arg, extract(body)}
+  end
   defp formatter([arg, "plural", :comma|body]) do
     {:plural, arg, extract(body)}
   end
@@ -145,21 +151,35 @@ defmodule MessageFormat do
   def compile(tokens, env) when is_list(tokens) do
     tokens
     |> Enum.map(fn (t) -> compile(t, env) end)
-    |> Enum.reduce(fn (right, left) ->
-      {:<>, [context: Elixir, import: Kernel], [left, right]}
-    end)
+    |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
   end
 
   def compile({:select, arg, m}, env) do
     arg = arg |> String.downcase |> String.to_atom
 
-    clauses = Enum.map(m, fn(x) ->
-      { k, v } = x
+    clauses = Enum.map(m, fn({k, v}) ->
       {:->, [], [[k], compile(v, env)]}
     end)
 
     quote do
-      case unquote({:args, [], Elixir})[unquote(arg)] do
+      case unquote(var(:args))[unquote(arg)] do
+        unquote(clauses)
+      end
+    end
+  end
+
+  def compile({:selectordinal, arg, m}, env) do
+    arg = arg |> String.downcase |> String.to_atom
+    accessor = quote do
+      unquote(var(:args))[unquote(arg)]
+    end
+
+    clauses = Enum.map(m, fn({ k, v }) ->
+      {:->, [], [[k], compile(v, Map.put(env, :accessor, accessor))]}
+    end)
+
+    quote do
+      case plural(unquote(env.lang), unquote(accessor), :ordinal) do
         unquote(clauses)
       end
     end
@@ -168,7 +188,7 @@ defmodule MessageFormat do
   def compile({:plural, arg, m}, env) do
     arg = arg |> String.downcase |> String.to_atom
     accessor = quote do
-      unquote({:args, [], Elixir})[unquote(arg)]
+      unquote(var(:args))[unquote(arg)]
     end
 
     clauses = Enum.map(m, fn({ k, v }) ->
@@ -176,7 +196,7 @@ defmodule MessageFormat do
     end)
 
     quote do
-      case plural(unquote(env.lang), unquote(accessor)) do
+      case plural(unquote(env.lang), unquote(accessor), :cardinal) do
         unquote(clauses)
       end
     end

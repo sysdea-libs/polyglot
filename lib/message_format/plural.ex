@@ -21,17 +21,24 @@ defmodule MessageFormat.Plural do
       plurals
       |> Enum.into(HashSet.new)
       |> Enum.map(&compile_lang(&1))
+      |> List.flatten
     end
   end
 
   defp compile_lang(lang) do
-    load(lang)
-    |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
-    |> compile_rules(lang)
+    {cardinals, ordinals} = load(lang)
+
+    [cardinals
+     |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
+     |> compile_rules(lang, :cardinal),
+
+     ordinals
+     |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
+     |> compile_rules(lang, :ordinal)]
   end
 
   # Compiles a list of rules into a def
-  defp compile_rules(rules, lang) do
+  defp compile_rules(rules, lang, kind) do
     { clauses, deps } = Enum.reduce(Enum.reverse(rules), { [], HashSet.new },
                           fn({name, {ast, deps}}, { clauses, alldeps }) ->
                             { [{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps) }
@@ -41,7 +48,7 @@ defmodule MessageFormat.Plural do
                     |> Enum.map(&quote(do: unquote(var(&1)) = unquote(compile_dep(&1))))
 
     quote do
-      def plural(unquote(lang), unquote(var(:n)), :cardinal) do
+      defp plural(unquote(lang), unquote(var(:n)), unquote(kind)) do
         unquote_splicing(compiled_deps)
         cond do
           unquote(clauses)
@@ -51,7 +58,7 @@ defmodule MessageFormat.Plural do
   end
 
   # Helper function to generate var references
-  defp var(name), do: {name, [], :prelude}
+  defp var(name), do: {name, [], :plural}
 
   # Shared structure for v/f/t
   defp after_decimal do
@@ -75,9 +82,14 @@ defmodule MessageFormat.Plural do
     quote do: unquote(after_decimal) |> String.strip(?0) |> String.length
   end
 
-  # Load a langs plurals from the XML
   defp load(lang) do
-    {:ok, f} = :file.read_file(:code.priv_dir(:message_format) ++ '/plurals.xml')
+    { load_file(lang, '/plurals.xml'),
+      load_file(lang, '/ordinals.xml') }
+  end
+
+  # Load a langs plurals from the XML
+  defp load_file(lang, file) do
+    {:ok, f} = :file.read_file(:code.priv_dir(:message_format) ++ file)
 
     {xml, _} = f
                |> :binary.bin_to_list

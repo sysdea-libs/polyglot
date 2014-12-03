@@ -8,6 +8,6 @@ WIP
 
 - [x] Lazy plural rule compilation
 - [x] Cardinal pluralisation (default)
-- [ ] Ordinal pluralisation
+- [x] Ordinal pluralisation
 - [ ] Range pluralisation
 - [ ] Compile from standalone files as well as embedded strings
