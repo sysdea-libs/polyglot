@@ -118,6 +118,9 @@ defmodule MessageFormat do
   defp formatter([arg, "plural", :comma|body]) do
     {:plural, arg, extract(body)}
   end
+  defp formatter([arg, "range", :comma|body]) do
+    {:range, arg, extract(body)}
+  end
   defp formatter(tokens), do: tokens
 
   # Transform a list of tokens into a map
@@ -176,9 +179,10 @@ defmodule MessageFormat do
     accessor = quote do
       unquote(var(:args))[unquote(arg)]
     end
+    printer = quote do: inspect(unquote(accessor))
 
     clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :accessor, accessor))]}
+      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
     end)
 
     quote do
@@ -193,9 +197,10 @@ defmodule MessageFormat do
     accessor = quote do
       unquote(var(:args))[unquote(arg)]
     end
+    printer = quote do: inspect(unquote(accessor))
 
     clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :accessor, accessor))]}
+      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
     end)
 
     quote do
@@ -205,11 +210,29 @@ defmodule MessageFormat do
     end
   end
 
-  def compile(:hash, env) do
-    if Map.has_key?(env, :accessor) do
-      quote do
-        inspect(unquote(env.accessor))
+  def compile({:range, arg, m}, env) do
+    arg = arg |> String.downcase |> String.to_atom
+    accessor = quote do
+      unquote(var(:args))[unquote(arg)]
+    end
+    printer = quote do
+      inspect(elem(unquote(accessor), 0)) <> "-" <> inspect(elem(unquote(accessor), 1))
+    end
+
+    clauses = Enum.map(m, fn({ k, v }) ->
+      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
+    end)
+
+    quote do
+      case plural(unquote(env.lang), unquote(accessor), :range) do
+        unquote(clauses)
       end
+    end
+  end
+
+  def compile(:hash, env) do
+    if Map.has_key?(env, :printer) do
+      env.printer
     else
       "#"
     end

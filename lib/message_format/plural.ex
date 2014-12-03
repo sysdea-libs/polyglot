@@ -24,19 +24,39 @@ defmodule MessageFormat.Plural do
   end
 
   defp compile_lang(lang) do
-    {cardinals, ordinals} = load(lang)
+    {cardinals, ordinals, ranges} = load(lang)
 
     [cardinals
      |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
-     |> compile_rules(lang, :cardinal),
+     |> compile_plurals(lang, :cardinal),
 
      ordinals
      |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
-     |> compile_rules(lang, :ordinal)]
+     |> compile_plurals(lang, :ordinal),
+
+     compile_ranges(ranges, lang)]
+  end
+
+  defp compile_ranges(rules, lang) do
+    clauses = for { result, from, to } <- rules do
+      quote do
+        { unquote(from), unquote(to) } -> unquote(result)
+      end
+    end
+
+    quote do
+      defp plural(unquote(lang), { from, to }, :range) do
+        from = plural(unquote(lang), from, :cardinal)
+        to = plural(unquote(lang), to, :cardinal)
+        case { from, to } do
+          unquote(List.flatten clauses)
+        end
+      end
+    end
   end
 
   # Compiles a list of rules into a def
-  defp compile_rules(rules, lang, kind) do
+  defp compile_plurals(rules, lang, kind) do
     { clauses, deps } = Enum.reduce(Enum.reverse(rules), { [], HashSet.new },
                           fn({name, {ast, deps}}, { clauses, alldeps }) ->
                             { [{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps) }
@@ -81,24 +101,39 @@ defmodule MessageFormat.Plural do
   end
 
   defp load(lang) do
-    { load_file(lang, '/plurals.xml'),
-      load_file(lang, '/ordinals.xml') }
+    { load_plural_file(lang, '/plurals.xml'),
+      load_plural_file(lang, '/ordinals.xml'),
+      load_range_file(lang, '/pluralRanges.xml') }
   end
 
   # Load a langs plurals from the XML
-  defp load_file(lang, file) do
-    {:ok, f} = :file.read_file(:code.priv_dir(:message_format) ++ file)
-
-    {xml, _} = f
-               |> :binary.bin_to_list
-               |> :xmerl_scan.string
-
+  defp load_plural_file(lang, file) do
+    xml = xml_file(:code.priv_dir(:message_format) ++ file)
     qs = "//pluralRules[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRule"
     for el <- q(qs, xml) do
       [xmlAttribute(value: count)] = q("./@count", el)
       [xmlText(value: rule)] = q("./text()", el)
       { List.to_string(count), extract_rule(rule) }
     end
+  end
+  defp load_range_file(lang, file) do
+    xml = xml_file(:code.priv_dir(:message_format) ++ file)
+    qs = "//pluralRanges[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRange"
+    for el <- q(qs, xml) do
+      [xmlAttribute(value: result)] = q("./@result", el)
+      [xmlAttribute(value: from)] = q("./@start", el)
+      [xmlAttribute(value: to)] = q("./@end", el)
+      { List.to_string(result), List.to_string(from), List.to_string(to) }
+    end
+  end
+  defp xml_file(path) do
+    {:ok, f} = :file.read_file(path)
+
+    {xml, _} = f
+               |> :binary.bin_to_list
+               |> :xmerl_scan.string
+
+    xml
   end
   defp q(s, xml) do
     :xmerl_xpath.string(to_char_list(s), xml)

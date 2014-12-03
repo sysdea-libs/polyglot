@@ -9,9 +9,9 @@ WIP
 - [x] Lazy plural rule compilation
 - [x] Cardinal pluralisation (default)
 - [x] Ordinal pluralisation
-- [ ] Range pluralisation
+- [x] Range pluralisation
 - [ ] Compile from standalone files as well as embedded strings
-- [ ] Lint plural and selectordinal to check cases covered.
+- [ ] Lint plural/selectordinal/range to check cases covered.
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?).
 - [ ] Accept strings for plural/selectordinal.
 - [ ] Deal with differing decimal marks (may be covered by accepting strings).

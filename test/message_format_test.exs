@@ -38,6 +38,14 @@ defmodule MessageFormatTest.Compiled do
                   few {#rd}
                 other {#th}} place.
   """
+
+  compile_string :t!, "cs", "range", """
+  {RANGE, range,
+      one {# den}
+      few {# dny}
+     many {# dne}
+    other {# dní}}.
+  """
 end
 
 defmodule MessageFormatTest do
@@ -74,5 +82,16 @@ defmodule MessageFormatTest do
            == "You came in 103rd place."
     assert MessageFormatTest.Compiled.t!("en", "selectordinal", %{place: 7})
            == "You came in 7th place."
+  end
+
+  test "compile_string range" do
+    assert MessageFormatTest.Compiled.t!("cs", "range", %{range: {0,1}})
+           == "0-1 den."
+    assert MessageFormatTest.Compiled.t!("cs", "range", %{range: {2,4}})
+           == "2-4 dny."
+    assert MessageFormatTest.Compiled.t!("cs", "range", %{range: {2,3.5}})
+           == "2-3.5 dne."
+    assert MessageFormatTest.Compiled.t!("cs", "range", %{range: {0,5}})
+           == "0-5 dní."
   end
 end
