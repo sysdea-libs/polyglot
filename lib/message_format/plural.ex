@@ -62,15 +62,43 @@ defmodule MessageFormat.Plural do
                             { [{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps) }
                           end)
 
-    compiled_deps = Set.delete(deps, :n)
-                    |> Enum.map(&quote(do: unquote(var(&1)) = unquote(compile_dep(&1))))
+    prelude = Set.delete(deps, :n)
+              |> Enum.map(&quote(do: unquote(var(&1)) = unquote(compile_dep(&1))))
 
     quote do
-      defp plural(unquote(lang), unquote(var(:n)), unquote(kind)) do
-        unquote_splicing(compiled_deps)
+      defp plural(unquote(lang), unquote(var(:input_n)), unquote(kind)) do
+        unquote(var(:n)) = unquote(n_to_number(var(:input_n)))
+        unquote(var(:string_n)) = unquote(n_to_string(var(:input_n)))
+        unquote_splicing(prelude)
         cond do
           unquote(clauses)
         end
+      end
+    end
+  end
+
+  # TODO: take into account decimal format of target language
+  defp n_to_number(n) do
+    quote do
+      case unquote(n) do
+        n when is_bitstring(n) ->
+          if String.contains?(n, ".") do
+            {f, ""} = Float.parse(n)
+            f
+          else
+            {i, ""} = Integer.parse(n)
+            i
+          end
+        n -> n
+      end
+    end
+  end
+
+  defp n_to_string(n) do
+    quote do
+      case unquote(n) do
+        n when is_float(n) or is_integer(n) -> inspect(n)
+        n -> n
       end
     end
   end
@@ -80,8 +108,7 @@ defmodule MessageFormat.Plural do
 
   # Shared structure for v/f/t
   defp after_decimal do
-    quote do: unquote(var(:n))
-              |> inspect
+    quote do: unquote(var(:string_n))
               |> String.split(".")
               |> Enum.at(1) || ""
   end
