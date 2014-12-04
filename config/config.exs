@@ -24,5 +24,5 @@ use Mix.Config
 #     import_config "#{Mix.env}.exs"
 
 config :logger, :console,
-  level: :debug,
+  level: :info,
   format: "$date $time [$level] $message\n"
