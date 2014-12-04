@@ -1,5 +1,6 @@
 defmodule Polyglot.Plural do
   require Record
+  require Logger
   Record.defrecordp :xmlAttribute, Record.extract(:xmlAttribute, from_lib: "xmerl/include/xmerl.hrl")
   Record.defrecordp :xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl")
 
@@ -7,6 +8,32 @@ defmodule Polyglot.Plural do
     quote do
       @before_compile Polyglot.Plural
       Module.register_attribute(__MODULE__, :plurals, accumulate: true)
+
+      defp plural(lang, :range, arg) do
+        plural_impl(lang, :range, arg)
+      end
+      # TODO: strip currency/thousands separators?
+      # Would need knowledge of different number formats based on lang.
+      defp plural(lang, kind, string_n) when is_bitstring(string_n) do
+        n = cond do
+          String.contains?(string_n, ".") ->
+            {f, ""} = Float.parse(string_n)
+            f
+          String.contains?(string_n, ",") ->
+            {f, ""} = string_n
+                      |> String.replace(",", ".")
+                      |> Float.parse
+            f
+          true ->
+            {i, ""} = Integer.parse(string_n)
+            i
+        end
+        plural_impl(lang, kind, n, string_n)
+      end
+      defp plural(lang, kind, n) do
+        string_n = inspect(n)
+        plural_impl(lang, kind, n, string_n)
+      end
     end
   end
 
@@ -27,11 +54,9 @@ defmodule Polyglot.Plural do
     {cardinals, ordinals, ranges} = load(lang)
 
     [cardinals
-     |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
      |> compile_plurals(lang, :cardinal),
 
      ordinals
-     |> Enum.map(fn ({k, v}) -> {k, parse(v)} end)
      |> compile_plurals(lang, :ordinal),
 
      compile_ranges(ranges, lang)]
@@ -45,9 +70,9 @@ defmodule Polyglot.Plural do
     end
 
     quote do
-      defp plural(unquote(lang), { from, to }, :range) do
-        from = plural(unquote(lang), from, :cardinal)
-        to = plural(unquote(lang), to, :cardinal)
+      defp plural_impl(unquote(lang), :range, { from, to }) do
+        from = plural(unquote(lang), :cardinal, from)
+        to = plural(unquote(lang), :cardinal, to)
         case { from, to } do
           unquote(List.flatten clauses)
         end
@@ -58,50 +83,33 @@ defmodule Polyglot.Plural do
   # Compiles a list of rules into a def
   defp compile_plurals(rules, lang, kind) do
     { clauses, deps } = Enum.reduce(Enum.reverse(rules), { [], HashSet.new },
-                          fn({name, {ast, deps}}, { clauses, alldeps }) ->
+                          fn({name, rule}, { clauses, alldeps }) ->
+                            {ast, deps} = parse(rule)
                             { [{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps) }
                           end)
 
     prelude = Set.delete(deps, :n)
               |> Enum.map(&quote(do: unquote(var(&1)) = unquote(compile_dep(&1))))
 
-    quote do
-      defp plural(unquote(lang), unquote(var(:string_n)), unquote(kind))
-           when is_bitstring(unquote(var(:string_n))) do
-        unquote(var(:n)) = unquote(n_to_number(var(:string_n)))
-        unquote_splicing(prelude)
-        cond do
-          unquote(clauses)
-        end
-      end
-      defp plural(unquote(lang), unquote(var(:n)), unquote(kind)) do
-        unquote(var(:string_n)) = inspect(unquote(var(:n)))
+    ast = quote do
+      defp plural_impl(unquote(lang), unquote(kind), unquote(var(:n)), unquote(var(:string_n))) do
         unquote_splicing(prelude)
         cond do
           unquote(clauses)
         end
       end
     end
-  end
 
-  # TODO: strip currency/thousands separators?
-  # Would need knowledge of different number formats based on lang.
-  defp n_to_number(n) do
-    quote do
-      cond do
-        String.contains?(unquote(n), ".") ->
-          {f, ""} = Float.parse(unquote(n))
-          f
-        String.contains?(unquote(n), ",") ->
-          {f, ""} = unquote(n)
-                    |> String.replace(",", ".")
-                    |> Float.parse
-          f
-        true ->
-          {i, ""} = Integer.parse(unquote(n))
-          i
-      end
+    Logger.debug fn ->
+      """
+      Compiled plural:
+      #{inspect(rules)}
+        =>
+      #{Macro.to_string(ast)}
+      """
     end
+
+    ast
   end
 
   # Helper function to generate var references

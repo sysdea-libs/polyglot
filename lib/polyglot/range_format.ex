@@ -23,7 +23,7 @@ defmodule Polyglot.RangeFormat do
         end)
 
         quote do
-          case plural(unquote(env.lang), unquote(accessor), :range) do
+          case plural(unquote(env.lang), :range, unquote(accessor)) do
             unquote(clauses)
           end
         end

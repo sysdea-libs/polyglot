@@ -19,7 +19,7 @@ defmodule Polyglot.PluralFormat do
         end)
 
         quote do
-          case plural(unquote(env.lang), unquote(accessor), :cardinal) do
+          case plural(unquote(env.lang), :cardinal, unquote(accessor)) do
             unquote(clauses)
           end
         end

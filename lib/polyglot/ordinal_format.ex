@@ -19,7 +19,7 @@ defmodule Polyglot.OrdinalFormat do
         end)
 
         quote do
-          case plural(unquote(env.lang), unquote(accessor), :ordinal) do
+          case plural(unquote(env.lang), :ordinal, unquote(accessor)) do
             unquote(clauses)
           end
         end
