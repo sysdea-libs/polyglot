@@ -38,9 +38,6 @@ defmodule Polyglot do
     end
   end
 
-  # Helper function to generate var references
-  defp var(name), do: {name, [], :plural}
-
   # defines a name(lang, key, options) function
   # eg compile_string(:t!, "en", "test", "my test string")
   defmacro function_from_string(name, lang, key, string) do
@@ -65,9 +62,10 @@ defmodule Polyglot do
 
   def compile_string(lang, key, string) do
     stripped = String.strip(string)
+    args = Macro.var(:args, :polyglot)
     ast = stripped
           |> parse
-          |> compile(%{lang: lang})
+          |> compile(%{lang: lang, args: args})
 
     Logger.debug fn ->
       """
@@ -78,7 +76,7 @@ defmodule Polyglot do
       """
     end
 
-    { [lang, key, var(:args)], ast }
+    { [lang, key, args], ast }
   end
 
   # Load a file into [{ lang, name, string }, ...]
@@ -227,9 +225,9 @@ defmodule Polyglot do
     |> Enum.map(fn (t) -> compile(t, env) end)
     |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
   end
-  def compile({:variable, var_name}, _env) do
+  def compile({:variable, var_name}, env) do
     quote do
-      ensure_string unquote(var(:args))[unquote(var_name)]
+      ensure_string unquote(env.args)[unquote(var_name)]
     end
   end
   def compile(:hash, env) do

@@ -10,7 +10,7 @@ defmodule Polyglot.PluralFormat do
       def compile({:plural, arg, m}, env) do
         arg = arg |> String.downcase |> String.to_atom
         accessor = quote do
-          unquote(var(:args))[unquote(arg)]
+          unquote(env.args)[unquote(arg)]
         end
         printer = quote do: ensure_string(unquote(accessor))
 

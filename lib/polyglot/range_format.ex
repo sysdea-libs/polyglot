@@ -10,11 +10,9 @@ defmodule Polyglot.RangeFormat do
       def compile({:range, arg, m}, env) do
         arg = arg |> String.downcase |> String.to_atom
         accessor = quote do
-          unquote(var(:args))[unquote(arg)]
+          unquote(env.args)[unquote(arg)]
         end
-        printer = quote do
-          format_range(unquote(accessor))
-        end
+        printer = quote do: format_range(unquote(accessor))
 
         clauses = Enum.map(m, fn({ k, v }) ->
           {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}

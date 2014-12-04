@@ -10,7 +10,7 @@ defmodule Polyglot.SelectFormat do
       def compile({:select, arg, m}, env) do
         arg = arg |> String.downcase |> String.to_atom
         accessor = quote do
-          unquote(var(:args))[unquote(arg)]
+          unquote(env.args)[unquote(arg)]
         end
 
         clauses = Enum.map(m, fn({k, v}) ->
