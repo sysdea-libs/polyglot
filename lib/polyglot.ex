@@ -48,7 +48,7 @@ defmodule Polyglot do
     end
   end
 
-  defmacro functions_from_file(name, path) do
+  defmacro function_from_file(name, path) do
     quote bind_quoted: binding do
       for {lang, key, string} <- Polyglot.load_file(path) do
         { args, body } = compile_string(lang, key, string)

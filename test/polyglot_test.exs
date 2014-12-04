@@ -53,7 +53,7 @@ defmodule PolyglotTest.C do
     other {# dní}}.
   """
 
-  functions_from_file :t!, __DIR__ <> "/fixtures/en.lang"
+  function_from_file :t!, __DIR__ <> "/fixtures/en.lang"
 end
 
 defmodule PolyglotTest do
@@ -120,7 +120,7 @@ defmodule PolyglotTest do
            == "0-5 dní."
   end
 
-  test "compile_file" do
+  test "function_from_file" do
     assert PolyglotTest.C.t!("en", "test message")
            == "Hello from the translator."
     assert PolyglotTest.C.t!("en", "test message 2", %{num: 3})

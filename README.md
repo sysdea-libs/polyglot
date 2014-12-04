@@ -2,6 +2,10 @@
 
 An implementation of a MessageFormat-like string interpolator (PluralFormat + SelectFormat) in Elixir, for the purposes of translation when plural and gender forms are needed, especially when used together inside sentences ("She found 3 categories in one result"). Features ordinal/range extensions in addition to cardinal plurality and selection.
 
+## Stability
+
+Polyglot is still in the early stages of development. Although the general syntax is fixed, calling conventions and API are still open to change.
+
 # Message Syntax
 
 ## SelectFormat
@@ -122,7 +126,7 @@ Hello from the translator.
 defmodule I18n do
   use Polyglot
 
-  functions_from_file :t!, :code.priv_dir(:polyglot) ++ '/lang/en.lang'
+  function_from_file :t!, :code.priv_dir(:polyglot) ++ '/lang/en.lang'
 end
 
 I18n.t!("en", "test message")
