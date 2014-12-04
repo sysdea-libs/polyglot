@@ -8,6 +8,16 @@ Polyglot is still in the early stages of development. Although the general synta
 
 # Message Syntax
 
+## Normal Interpolation
+
+Provides no formatting other than ensuring that the parameter is printed as a string.
+
+```
+Hello #{NAME}.
+
+# %{name: "Chris"} => "Hello Chris."
+```
+
 ## SelectFormat
 
 SelectFormat is the simplest formatter included, and simply selects from several outputs from a given input. For translation this most commonly is useful for gender selection.
@@ -18,8 +28,8 @@ SelectFormat is the simplest formatter included, and simply selects from several
   female {She is}
    other {They are}} great!
 
-# He is great!
-# They are great!
+# %{gender: "male"}  => "He is great!"
+# %{gender: "other"} => "They are great!"
 ```
 
 ## PluralFormat
@@ -31,8 +41,8 @@ PluralFormat is for cardinal pluralisation, such as "3 items", "1 item". The plu
   one {One item}
 other {# items}}.
 
-# One item.
-# 3 items.
+# %{num: 1} => "One item."
+# %{num: 3} => "3 items."
 ```
 
 ## OrdinalFormat
@@ -46,9 +56,9 @@ You came in {PLACE, ordinal,
                 few {#rd}
               other {#th}} place.
 
-# You came in 2nd place.
-# You came in 12th place.
-# You came in 22nd place.
+# %{place: 2}  => "You came in 2nd place."
+# %{place: 12} => "You came in 12th place."
+# %{place: 22} => "You came in 22nd place."
 ```
 
 ## RangeFormat
@@ -62,10 +72,10 @@ RangeFormat is where you have a range between two numbers, which then needs a pl
    many {# dne}
   other {# dní}}.
 
-# 0-1 den.
-# 2-4 dny.
-# 2-3,50 dne.
-# 0-5 dní.
+# %{range: {0, 1}}      => "0-1 den."
+# %{range: {2, 4}}      => "2-4 dny."
+# %{range: {2, "3,50"}} => "2-3,50 dne."
+# %{range: {0, 5}}      => "0-5 dní."
 ```
 
 The argument for a range should be a tuple of two numbers {a, b} and will be printed as `a-b`, substituting the `#`.
@@ -153,3 +163,5 @@ I18n.t!("en", "test message 2", %{num: 5})
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?).
 - [x] Accept strings for plural/ordinal/range.
 - [x] Deal with differing decimal marks.
+- [ ] Utility helpers for number formatting based on locale? (NumberFormat-ish?)
+- [ ] Compile to JavaScript.
