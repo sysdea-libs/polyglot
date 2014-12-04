@@ -12,6 +12,9 @@ defmodule Polyglot do
 
       defp ensure_string(n) when is_bitstring(n), do: n
       defp ensure_string(n), do: inspect(n)
+      defp format_range({ from, to }) do
+        "#{ensure_string from}-#{ensure_string to}"
+      end
     end
   end
 

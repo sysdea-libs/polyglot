@@ -13,9 +13,7 @@ defmodule Polyglot.RangeFormat do
           unquote(var(:args))[unquote(arg)]
         end
         printer = quote do
-          ensure_string(elem(unquote(accessor), 0))
-          <> "-" <>
-          ensure_string(elem(unquote(accessor), 1))
+          format_range(unquote(accessor))
         end
 
         clauses = Enum.map(m, fn({ k, v }) ->
