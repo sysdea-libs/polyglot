@@ -124,7 +124,7 @@ defmodule Polyglot do
       {_, "}"} -> {:error, "Unmatched closing bracket"}
       {n, ","} when n > 0 ->
         tokenise(rest, { "", [:comma, buffer | tokens], b_depth })
-      {n, "#"} when n > 0 ->
+      {n, "#"} ->
         tokenise(rest, { "", [:hash, buffer | tokens], b_depth })
       {_, "\\"} ->
         <<c::binary-size(1), rest::binary>> = rest
@@ -137,6 +137,17 @@ defmodule Polyglot do
   # Parse tokens out into nested lists of list|tuple|string|atom
   defp parse_tree(tokens, olist) do
     case tokens do
+      [:hash, :open | rest] ->
+        case { clause, rest } = parse_tree(rest, []) do
+          { [ raw_var ], rest } ->
+            var_name = raw_var |> String.strip |> String.downcase
+            if Regex.match?(~r/^[a-z][a-z0-9_-]*$/, var_name) do
+              parse_tree(rest, [{:variable, String.to_atom(var_name)}|olist])
+            else
+              {:error, "Unrecognised variable reference #{var_name}"}
+            end
+          _ -> {:error, "Unrecognised variable reference"}
+        end
       [:open | rest] ->
         { clause, rest } = parse_tree(rest, [])
         clause = parse_clause(clause)
@@ -199,6 +210,11 @@ defmodule Polyglot do
     tokens
     |> Enum.map(fn (t) -> compile(t, env) end)
     |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
+  end
+  def compile({:variable, var_name}, env) do
+    quote do
+      ensure_string unquote(var(:args))[unquote(var_name)]
+    end
   end
   def compile(:hash, env) do
     if Map.has_key?(env, :printer), do: env.printer, else: "#"

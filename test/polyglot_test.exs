@@ -3,6 +3,8 @@ defmodule PolyglotTest.C do
 
   function_from_string :t!, "en", "simple", "My simple string."
 
+  function_from_string :t!, "en", "interpolate", "Hello \#{NAME}."
+
   function_from_string :t!, "en", "plural", """
   {NUM, plural,
     one {one item}
@@ -59,8 +61,10 @@ end
 defmodule PolyglotTest do
   use ExUnit.Case
 
-  test "function_from_string simple strings, no args" do
+  test "function_from_string simple strings" do
     assert PolyglotTest.C.t!("en", "simple") == "My simple string."
+    assert PolyglotTest.C.t!("en", "interpolate", %{name: "Chris"})
+           == "Hello Chris."
   end
 
   test "function_from_string plural" do

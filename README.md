@@ -88,6 +88,8 @@ defmodule I18n do
 
   function_from_string :t!, "en", "simple", "My simple string."
 
+  function_from_string :t!, "en", "interpolate", "Hello \#{NAME}."
+
   function_from_string :t!, "en", "plural", """
   {NUM, plural,
     one {one item}
@@ -97,6 +99,9 @@ end
 
 I18n.t!("en", "simple")
 # => "My simple string."
+
+I18n.t!("en", "interpolate", %{name: "Chris"})
+# => "Hello Chris."
 
 I18n.t!("en", "plural", %{num: 5})
 # => "5 items."
@@ -138,6 +143,7 @@ I18n.t!("en", "test message 2", %{num: 5})
 
 # Roadmap
 
+- [x] Simple variable interpolation
 - [x] Lazy plural rule compilation
 - [x] Cardinal pluralisation
 - [x] Ordinal pluralisation
