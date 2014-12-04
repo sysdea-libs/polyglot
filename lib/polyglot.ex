@@ -1,5 +1,6 @@
 defmodule Polyglot do
   require Polyglot.Plural
+  require Logger
 
   defmacro __using__(_env) do
     quote do
@@ -60,9 +61,21 @@ defmodule Polyglot do
   end
 
   def compile_string(lang, key, string) do
-    compiled = Polyglot.compile(Polyglot.parse(string), %{lang: lang})
+    stripped = String.strip(string)
+    ast = stripped
+          |> parse
+          |> compile(%{lang: lang})
 
-    { [lang, key, var(:args)], quote(do: String.strip(unquote(compiled))) }
+    Logger.debug fn ->
+      """
+      Compiled string:
+      #{stripped}
+        =>
+      #{Macro.to_string(ast)}
+      """
+    end
+
+    { [lang, key, var(:args)], ast }
   end
 
   # Load a file into [{ lang, name, string }, ...]
@@ -124,7 +137,7 @@ defmodule Polyglot do
       {_, "}"} -> {:error, "Unmatched closing bracket"}
       {n, ","} when n > 0 ->
         tokenise(rest, { "", [:comma, buffer | tokens], b_depth })
-      {n, "#"} ->
+      {_, "#"} ->
         tokenise(rest, { "", [:hash, buffer | tokens], b_depth })
       {_, "\\"} ->
         <<c::binary-size(1), rest::binary>> = rest
@@ -211,7 +224,7 @@ defmodule Polyglot do
     |> Enum.map(fn (t) -> compile(t, env) end)
     |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
   end
-  def compile({:variable, var_name}, env) do
+  def compile({:variable, var_name}, _env) do
     quote do
       ensure_string unquote(var(:args))[unquote(var_name)]
     end
