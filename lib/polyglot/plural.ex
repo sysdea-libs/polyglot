@@ -10,7 +10,7 @@ defmodule Polyglot.Plural do
       Module.register_attribute(__MODULE__, :plurals, accumulate: true)
 
       defp plural(lang, :range, arg) do
-        plural_impl(lang, :range, arg)
+        do_plural(lang, :range, arg)
       end
       # TODO: strip currency/thousands separators?
       # Would need knowledge of different number formats based on lang.
@@ -28,11 +28,11 @@ defmodule Polyglot.Plural do
             {i, ""} = Integer.parse(string_n)
             i
         end
-        plural_impl(lang, kind, n, string_n)
+        do_plural(lang, kind, n, string_n)
       end
       defp plural(lang, kind, n) do
         string_n = inspect(n)
-        plural_impl(lang, kind, n, string_n)
+        do_plural(lang, kind, n, string_n)
       end
     end
   end
@@ -53,12 +53,8 @@ defmodule Polyglot.Plural do
   defp compile_lang(lang) do
     {cardinals, ordinals, ranges} = load(lang)
 
-    [cardinals
-     |> compile_plurals(lang, :cardinal),
-
-     ordinals
-     |> compile_plurals(lang, :ordinal),
-
+    [compile_plurals(cardinals, lang, :cardinal),
+     compile_plurals(ordinals, lang, :ordinal),
      compile_ranges(ranges, lang)]
   end
 
@@ -70,7 +66,7 @@ defmodule Polyglot.Plural do
     end
 
     quote do
-      defp plural_impl(unquote(lang), :range, { from, to }) do
+      defp do_plural(unquote(lang), :range, { from, to }) do
         from = plural(unquote(lang), :cardinal, from)
         to = plural(unquote(lang), :cardinal, to)
         case { from, to } do
@@ -83,16 +79,20 @@ defmodule Polyglot.Plural do
   # Compiles a list of rules into a def
   defp compile_plurals(rules, lang, kind) do
     { clauses, deps } = Enum.reduce(Enum.reverse(rules), { [], HashSet.new },
-                          fn({name, rule}, { clauses, alldeps }) ->
+                          fn({name, rule}, {clauses, alldeps}) ->
                             {ast, deps} = parse(rule)
-                            { [{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps) }
+                            {[{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps)}
                           end)
 
-    prelude = Set.delete(deps, :n)
-              |> Enum.map(&quote(do: unquote(var(&1)) = unquote(compile_dep(&1))))
+    n = Macro.var(:n, :plural)
+    string_n = Macro.var(:string_n, :plural)
+
+    prelude = for v <- deps do
+                {:=, [], [v, compile_dep(v, n, string_n)]}
+              end
 
     ast = quote do
-      defp plural_impl(unquote(lang), unquote(kind), unquote(var(:n)), unquote(var(:string_n))) do
+      defp do_plural(unquote(lang), unquote(kind), unquote(n), unquote(string_n)) do
         unquote_splicing(prelude)
         cond do
           unquote(clauses)
@@ -112,29 +112,22 @@ defmodule Polyglot.Plural do
     ast
   end
 
-  # Helper function to generate var references
-  defp var(name), do: {name, [], :plural}
-
   # Shared structure for v/f/t
   # TODO: see note on n_to_number on separators
-  defp after_decimal do
-    quote do: unquote(var(:string_n))
+  defp after_decimal(string_n) do
+    quote do: unquote(string_n)
               |> String.split(~r/\.|,/)
               |> Enum.at(1) || ""
   end
 
   # Compiles the index numbers needed for pluralising
-  defp compile_dep(:i) do
-    quote do: trunc(unquote(var(:n)))
-  end
-  defp compile_dep(:v) do
-    quote do: unquote(after_decimal) |> String.length
-  end
-  defp compile_dep(:f) do
-    quote do: unquote(after_decimal) |> Integer.parse
-  end
-  defp compile_dep(:t) do
-    quote do: unquote(after_decimal) |> String.strip(?0) |> String.length
+  defp compile_dep({v, _, _}, n, string_n) do
+    case v do
+      :i -> quote do: trunc(unquote(n))
+      :v -> quote do: unquote(after_decimal string_n) |> String.length
+      :f -> quote do: unquote(after_decimal string_n) |> Integer.parse
+      :t -> quote do: unquote(after_decimal string_n) |> String.strip(?0) |> String.length
+    end
   end
 
   defp load(lang) do
@@ -207,8 +200,12 @@ defmodule Polyglot.Plural do
 
       <<c::binary-size(1), str::binary>> when c == "n" or c == "i" or c == "f"
                                            or c == "t" or c == "v" or c == "w" ->
-        atom = String.to_atom(c)
-        tokenise(str, [{:var,atom}|tokens], Set.put(deps, atom))
+        v = Macro.var(String.to_atom(c), :plural)
+        if c == "n" do
+          tokenise(str, [{:var,v}|tokens], deps)
+        else
+          tokenise(str, [{:var,v}|tokens], Set.put(deps, v))
+        end
 
       str ->
         case Regex.run(~r/^[0-9]+/, str) do
@@ -230,34 +227,34 @@ defmodule Polyglot.Plural do
                   comma: 5,
                   range: 6 }
 
-  defp parse_tree([], [], [output]) do
-    output
-  end
-  defp parse_tree([], [op|opstack], output) do
-    push_op(op, [], opstack, output)
-  end
-  defp parse_tree([{:op, o1}|rest], [], output) do
-    parse_tree(rest, [o1], output)
-  end
-  defp parse_tree([{:op, o1}|rest], [o2|opstack], output) do
-    if @precedences[o1] <= @precedences[o2] do
-      push_op(o2, [{:op, o1}|rest], opstack, output)
-    else
-      parse_tree(rest, [o1,o2|opstack], output)
+  defp parse_tree(tokens, opstack, output) do
+    case {tokens, opstack, output} do
+      {[], [], [result]} ->
+        result
+      {[], [op|opstack], output} ->
+        push_op(op, [], opstack, output)
+      {[{:op, o1}|rest], [], output} ->
+        parse_tree(rest, [o1], output)
+      {[{:op, o1}|rest]=tokens, [o2|opstack], output} ->
+        if @precedences[o1] <= @precedences[o2] do
+          push_op(o2, tokens, opstack, output)
+        else
+          parse_tree(rest, [o1,o2|opstack], output)
+        end
+      {[node|rest], opstack, output} ->
+        parse_tree(rest, opstack, [node|output])
     end
   end
-  defp parse_tree([node|rest], opstack, output) do
-    parse_tree(rest, opstack, [node|output])
-  end
 
-  defp push_op(:comma, tokens, opstack, [r,{:list, vs}|output]) do
-    parse_tree(tokens, opstack, [{:list, [r|vs]}|output])
-  end
-  defp push_op(:comma, tokens, opstack, [r,l|output]) do
-    parse_tree(tokens, opstack, [{:list, [r,l]}|output])
-  end
   defp push_op(op, tokens, opstack, [r,l|output]) do
-    parse_tree(tokens, opstack, [{:binary, op, l, r}|output])
+    case {op, l} do
+      {:comma, {:list, vs}} ->
+        parse_tree(tokens, opstack, [{:list, [r|vs]}|output])
+      {:comma, _} ->
+        parse_tree(tokens, opstack, [{:list, [r,l]}|output])
+      _ ->
+        parse_tree(tokens, opstack, [{:binary, op, l, r}|output])
+    end
   end
 
   # Compile out the tree into elixir forms
@@ -266,21 +263,19 @@ defmodule Polyglot.Plural do
              neq: :!=, eq: :==,
              mod: :rem }
 
-  defp compile({:number, n}), do: n
-  defp compile({:var, v}), do: var(v)
-  defp compile({:binary, :eq, l, {:list, vs}}) do
-    Enum.map(vs, &compile({:binary, :eq, l, &1}))
-    |> Enum.reduce(&quote do: unquote(&2) or unquote(&1))
-  end
-  defp compile({:binary, :eq, l, {:binary, :range, lr, rr}}) do
-    quote do
-      unquote(compile(l)) in unquote(compile(lr))..unquote(compile(rr))
+  defp compile(form) do
+    case form do
+      {:number, n} -> n
+      {:var, v} -> v
+      {:binary, :eq, l, {:list, vs}} ->
+        for v <- vs, do: compile({:binary, :eq, l, v})
+        |> Enum.reduce(&quote do: unquote(&2) or unquote(&1))
+      {:binary, :eq, l, {:binary, :range, lr, rr}} ->
+        quote do: unquote(compile(l)) in unquote(compile(lr))..unquote(compile(rr))
+      {:binary, :neq, _, {:list, _}}=form ->
+        quote do: !unquote(compile(put_elem(form, 1, :eq)))
+      {:binary, op, l, r} ->
+        {@op_map[op], [context: Elixir, import: Kernel], [compile(l), compile(r)]}
     end
-  end
-  defp compile({:binary, :neq, l, {:list, vs}}) do
-    quote do: !unquote(compile({:binary, :eq, l, {:list, vs}}))
-  end
-  defp compile({:binary, op, l, r}) do
-    {@op_map[op], [context: Elixir, import: Kernel], [compile(l), compile(r)]}
   end
 end
