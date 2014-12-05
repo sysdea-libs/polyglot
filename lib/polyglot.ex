@@ -140,39 +140,44 @@ defmodule Polyglot do
   end
 
   # Parse tokens out into nested lists of list|tuple|string|atom
-  defp parse_tree(tokens, olist) do
+  defp parse_tree(tokens, output) do
     case tokens do
       [:hash, :open | rest] ->
-        case parse_tree(rest, []) do
-          {:partial, {[raw_var], rest}} ->
-            var_name = raw_var |> String.strip |> String.downcase
-            if Regex.match?(~r/^[a-z][a-z0-9_-]*$/, var_name) do
-              parse_tree(rest, [{:variable, String.to_atom(var_name)}|olist])
-            else
-              {:error, "Unrecognised variable reference #{var_name}"}
-            end
-          _ -> {:error, "Unrecognised variable reference"}
-        end
+        {:partial, {clause, rest}} = parse_tree(rest, [])
+        parse_tree(rest, [parse_variable(clause)|output])
       [:open | rest] ->
         {:partial, {clause, rest}} = parse_tree(rest, [])
-        clause = parse_clause(clause)
-        parse_tree(rest, [clause|olist])
+        parse_tree(rest, [parse_formatter(clause)|output])
       [:close | rest] ->
-        {:partial, {Enum.reverse(olist), rest}}
+        {:partial, {Enum.reverse(output), rest}}
       [x | rest] ->
-        parse_tree(rest, [x|olist])
+        parse_tree(rest, [x|output])
       [] ->
-        {:ok, Enum.reverse(olist)}
+        {:ok, Enum.reverse(output)}
     end
   end
 
-  # takes a bracketed clause and returns either the list of tokens back or a
-  # tuple describing a formatting node
-  defp parse_clause([op1, :comma, op2 | rest]) do
-    command = String.strip(op2)
-    formatter([op1, command | rest])
+  # Checks head of list to be a valid variable identifier, and if so
+  # calls the passed fn with it, otherwise returning the full token list.
+  # Doesn't atomise the var name yet, due to possible false positives.
+  defp check_arg([arg|_rest]=tokens, f) do
+    var_name = arg |> String.strip |> String.downcase
+    if Regex.match?(~r/^[a-z][a-z0-9_-]*$/, var_name) do
+      f.(var_name)
+    else
+      tokens
+    end
   end
-  defp parse_clause(tokens), do: tokens
+
+  defp parse_formatter([_arg, :comma, format | rest]=tokens) do
+    check_arg(tokens, &formatter([&1, String.strip(format) | rest]))
+  end
+  defp parse_formatter(tokens), do: tokens
+
+  defp parse_variable([_arg]=tokens) do
+    check_arg(tokens, &({:variable, String.to_atom(&1)}))
+  end
+  defp parse_variable(tokens), do: tokens
 
   # include formatters
   use Polyglot.SelectFormat

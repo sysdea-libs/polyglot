@@ -8,7 +8,7 @@ defmodule Polyglot.SelectFormat do
       end
 
       def compile({:select, arg, m}, env) do
-        arg = arg |> String.downcase |> String.to_atom
+        arg = String.to_atom(arg)
         accessor = quote do
           unquote(env.args)[unquote(arg)]
         end
