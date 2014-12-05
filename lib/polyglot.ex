@@ -78,11 +78,8 @@ defmodule Polyglot do
 
   # Load a file into [{lang, name, string}, ...]
   def load_file(path) do
-    {:ok, file_contents} = :file.read_file(path)
-    lines = String.split(file_contents, ~r/\r?\n/)
-
-    {lang, messages, name, buffer} =
-      Enum.reduce(lines, {nil, [], nil, nil}, &parse_line(&1, &2))
+    {lang, messages, name, buffer} = File.stream!(path)
+                                     |> Enum.reduce({nil, [], nil, nil}, &parse_line(&1, &2))
 
     [{lang, name, String.strip(buffer)}|messages]
   end
@@ -146,7 +143,7 @@ defmodule Polyglot do
   defp parse_tree(tokens, olist) do
     case tokens do
       [:hash, :open | rest] ->
-        case {clause, rest} = parse_tree(rest, []) do
+        case parse_tree(rest, []) do
           {:partial, {[raw_var], rest}} ->
             var_name = raw_var |> String.strip |> String.downcase
             if Regex.match?(~r/^[a-z][a-z0-9_-]*$/, var_name) do
@@ -187,30 +184,13 @@ defmodule Polyglot do
 
   # Transform a list of tokens into a map
   # Helper function used by the Formatters
-  # [a b c d] -> %{"a"=>"b", "c"=>"d"}
+  # [" a ", :hash, "c  ", ["my data"]] -> %{"a"=>:hash, "c"=>["my data"]}
   defp extract(tokens) do
-    tokens
-    |> clean_tokens
-    |> extract_map(%{})
-  end
-
-  defp extract_map([key, value|rest], m) do
-    extract_map(rest, Map.put(m, String.strip(key), value))
-  end
-  defp extract_map([], m), do: m
-
-  defp clean_tokens(tokens) do
-    Enum.reduce(tokens, [], fn (r, acc) ->
-      if is_bitstring(r) do
-        case String.strip(r) do
-          "" -> acc
-          str -> [str|acc]
-        end
-      else
-        [r|acc]
-      end
-    end)
-    |> Enum.reverse
+    for [k,v] <- tokens
+                 |> Enum.map(fn s when is_bitstring(s) -> String.strip(s)
+                                t -> t end)
+                 |> Enum.filter(&(&1 != ""))
+                 |> Enum.chunk(2), do: {k, v}, into: %{}
   end
 
   # Generic recursive compile for lists and possibly stranded tokens
