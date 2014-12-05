@@ -59,17 +59,17 @@ defmodule Polyglot.Plural do
   end
 
   defp compile_ranges(rules, lang) do
-    clauses = for { result, from, to } <- rules do
+    clauses = for {result, from, to} <- rules do
       quote do
-        { unquote(from), unquote(to) } -> unquote(result)
+        {unquote(from), unquote(to)} -> unquote(result)
       end
     end
 
     quote do
-      defp do_plural(unquote(lang), :range, { from, to }) do
+      defp do_plural(unquote(lang), :range, {from, to}) do
         from = plural(unquote(lang), :cardinal, from)
         to = plural(unquote(lang), :cardinal, to)
-        case { from, to } do
+        case {from, to} do
           unquote(List.flatten clauses)
         end
       end
@@ -78,11 +78,11 @@ defmodule Polyglot.Plural do
 
   # Compiles a list of rules into a def
   defp compile_plurals(rules, lang, kind) do
-    { clauses, deps } = Enum.reduce(Enum.reverse(rules), { [], HashSet.new },
-                          fn({name, rule}, {clauses, alldeps}) ->
-                            {ast, deps} = parse(rule)
-                            {[{:->, [], [[ast], name]}|clauses], Set.union(alldeps, deps)}
-                          end)
+    {clauses, deps} = Enum.map_reduce rules, HashSet.new,
+                        fn({name, rule}, alldeps) ->
+                          {ast, deps} = parse(rule)
+                          {{:->, [], [[ast], name]}, Set.union(alldeps, deps)}
+                        end
 
     n = Macro.var(:n, :plural)
     string_n = Macro.var(:string_n, :plural)
@@ -131,9 +131,9 @@ defmodule Polyglot.Plural do
   end
 
   defp load(lang) do
-    { load_plural_file(lang, '/plurals.xml'),
-      load_plural_file(lang, '/ordinals.xml'),
-      load_range_file(lang, '/pluralRanges.xml') }
+    {load_plural_file(lang, '/plurals.xml'),
+     load_plural_file(lang, '/ordinals.xml'),
+     load_range_file(lang, '/pluralRanges.xml')}
   end
 
   # Load a langs plurals from the XML
@@ -143,7 +143,7 @@ defmodule Polyglot.Plural do
     for el <- q(qs, xml) do
       [xmlAttribute(value: count)] = q("./@count", el)
       [xmlText(value: rule)] = q("./text()", el)
-      { List.to_string(count), extract_rule(rule) }
+      {List.to_string(count), extract_rule(rule)}
     end
   end
   defp load_range_file(lang, file) do
@@ -153,7 +153,7 @@ defmodule Polyglot.Plural do
       [xmlAttribute(value: result)] = q("./@result", el)
       [xmlAttribute(value: from)] = q("./@start", el)
       [xmlAttribute(value: to)] = q("./@end", el)
-      { List.to_string(result), List.to_string(from), List.to_string(to) }
+      {List.to_string(result), List.to_string(from), List.to_string(to)}
     end
   end
   defp xml_file(path) do
@@ -220,12 +220,12 @@ defmodule Polyglot.Plural do
   end
 
   # Parse tokens into a tree, using a shunting-yard parser
-  @precedences %{ or: 1,
-                  and: 2,
-                  neq: 3, eq: 3,
-                  mod: 4,
-                  comma: 5,
-                  range: 6 }
+  @precedences %{or: 1,
+                 and: 2,
+                 neq: 3, eq: 3,
+                 mod: 4,
+                 comma: 5,
+                 range: 6}
 
   defp parse_tree(tokens, opstack, output) do
     case {tokens, opstack, output} do
@@ -258,10 +258,10 @@ defmodule Polyglot.Plural do
   end
 
   # Compile out the tree into elixir forms
-  @op_map %{ or: :or,
-             and: :and,
-             neq: :!=, eq: :==,
-             mod: :rem }
+  @op_map %{or: :or,
+            and: :and,
+            neq: :!=, eq: :==,
+            mod: :rem}
 
   defp compile(form) do
     case form do
