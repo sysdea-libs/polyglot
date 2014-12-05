@@ -12,12 +12,13 @@ defmodule Polyglot do
 
       defp ensure_string(n) when is_bitstring(n), do: n
       defp ensure_string(n), do: inspect(n)
-      defp format_range({ from, to }) do
+      defp format_range({from, to}) do
         "#{ensure_string from}-#{ensure_string to}"
       end
     end
   end
 
+  # Shim in <name>/2 head function for each distinct function generated.
   defmacro __before_compile__(env) do
     fns = Module.get_attribute(env.module, :translate_fns)
 
@@ -42,7 +43,7 @@ defmodule Polyglot do
   # eg compile_string(:t!, "en", "test", "my test string")
   defmacro function_from_string(name, lang, key, string) do
     quote bind_quoted: binding do
-      {args, body} = compile_string(lang, key, string)
+      {args, body} = compile_string!(lang, key, string)
       @plurals lang
       @translate_fns name
       def unquote(name)(unquote_splicing(args)), do: unquote(body)
@@ -52,20 +53,16 @@ defmodule Polyglot do
   defmacro function_from_file(name, path) do
     quote bind_quoted: binding do
       for {lang, key, string} <- Polyglot.load_file(path) do
-        { args, body } = compile_string(lang, key, string)
-        @plurals lang
-        @translate_fns name
-        def unquote(name)(unquote_splicing(args)), do: unquote(body)
+        function_from_string(name, lang, key, string)
       end
     end
   end
 
-  def compile_string(lang, key, string) do
+  def compile_string!(lang, key, string) do
     stripped = String.strip(string)
     args = Macro.var(:args, :polyglot)
-    ast = stripped
-          |> parse
-          |> compile(%{lang: lang, args: args})
+    {:ok, parse_tree} = parse(stripped)
+    ast = compile(parse_tree, %{lang: lang, args: args})
 
     Logger.debug fn ->
       """
@@ -76,45 +73,42 @@ defmodule Polyglot do
       """
     end
 
-    { [lang, key, args], ast }
+    {[lang, key, args], ast}
   end
 
-  # Load a file into [{ lang, name, string }, ...]
+  # Load a file into [{lang, name, string}, ...]
   def load_file(path) do
     {:ok, file_contents} = :file.read_file(path)
     lines = String.split(file_contents, ~r/\r?\n/)
 
-    { lang, messages, name, buffer } =
-      Enum.reduce(lines, { nil, [], nil, nil }, &parse_line(&1, &2))
+    {lang, messages, name, buffer} =
+      Enum.reduce(lines, {nil, [], nil, nil}, &parse_line(&1, &2))
 
-    [{ lang, name, String.strip(buffer) }|messages]
+    [{lang, name, String.strip(buffer)}|messages]
   end
 
-  defp parse_line(<<"LANG=", lang::binary>>, { _lang, [], nil, nil }) do
-    { String.strip(lang), [], nil, nil }
-  end
-  defp parse_line(<<"LANG=", newlang::binary>>, { lang, messages, name, buffer }) do
-    { String.strip(newlang), [{ lang, name, String.strip(buffer) }|messages], nil, nil }
-  end
-  defp parse_line(<<"@", newname::binary>>, { lang, messages, nil, nil }) do
-    { lang, messages, String.strip(newname), "" }
-  end
-  defp parse_line(<<"@", newname::binary>>, { lang, messages, name, buffer }) do
-    { lang, [{ lang, name, String.strip(buffer) }|messages], String.strip(newname), "" }
-  end
-  defp parse_line(<<"--", _commented::binary>>, state) do
-    state
-  end
-  defp parse_line(_line, { lang, messages, nil, nil }) do
-    { lang, messages, nil, nil }
-  end
-  defp parse_line(line, { lang, messages, name, buffer }) do
-    { lang, messages, name, buffer <> "\n" <> line }
+  defp parse_line(line, state) do
+    case {line, state} do
+      {<<"LANG=", lang::binary>>, {_, [], nil, nil}} ->
+        {String.strip(lang), [], nil, nil}
+      {<<"LANG=", newlang::binary>>, {lang, messages, name, buffer}} ->
+        {String.strip(newlang), [{lang, name, String.strip(buffer)}|messages], nil, nil}
+      {<<"@", newname::binary>>, {lang, messages, nil, nil}} ->
+        {lang, messages, String.strip(newname), ""}
+      {<<"@", newname::binary>>, {lang, messages, name, buffer}} ->
+        {lang, [{lang, name, String.strip(buffer)}|messages], String.strip(newname), ""}
+      {<<"--", _::binary>>, state} ->
+        state
+      {_, {_, _, nil, nil}=state} ->
+        state
+      {line, {lang, messages, name, buffer}} ->
+        {lang, messages, name, "#{buffer}\n#{line}"}
+    end
   end
 
   # Parse a string to an ast
   def parse(str) do
-    {:ok, tokens} = tokenise(str, { "", [], 0 })
+    {:ok, tokens} = tokenise(str, {"", [], 0})
 
     tokens
     |> Enum.filter(fn (t) -> t != "" end)
@@ -122,29 +116,29 @@ defmodule Polyglot do
   end
 
   # Tokenise a string
-  defp tokenise("", { buffer, tokens, 0 }) do
+  defp tokenise("", {buffer, tokens, 0}) do
     {:ok, Enum.reverse [buffer|tokens]}
   end
-  defp tokenise("", { _buffer, _tokens, _ }) do
+  defp tokenise("", _) do
     {:error, "Unmatched opening bracket"}
   end
-  defp tokenise(str, { buffer, tokens, b_depth }) do
+  defp tokenise(str, {buffer, tokens, b_depth}) do
     <<c::binary-size(1), rest::binary>> = str
-    case { b_depth, c } do
+    case {b_depth, c} do
       {_, "{"} ->
-        tokenise(rest, { "", [:open, buffer | tokens], b_depth+1})
+        tokenise(rest, {"", [:open, buffer | tokens], b_depth+1})
       {n, "}"} when n > 0 ->
-        tokenise(rest, { "", [:close, buffer | tokens], b_depth-1})
+        tokenise(rest, {"", [:close, buffer | tokens], b_depth-1})
       {_, "}"} -> {:error, "Unmatched closing bracket"}
       {n, ","} when n > 0 ->
-        tokenise(rest, { "", [:comma, buffer | tokens], b_depth })
+        tokenise(rest, {"", [:comma, buffer | tokens], b_depth})
       {_, "#"} ->
-        tokenise(rest, { "", [:hash, buffer | tokens], b_depth })
+        tokenise(rest, {"", [:hash, buffer | tokens], b_depth})
       {_, "\\"} ->
         <<c::binary-size(1), rest::binary>> = rest
-        tokenise(rest, { buffer <> c, tokens, b_depth })
+        tokenise(rest, {buffer <> c, tokens, b_depth})
       {_, c} ->
-        tokenise(rest, { buffer <> c, tokens, b_depth })
+        tokenise(rest, {buffer <> c, tokens, b_depth})
     end
   end
 
@@ -152,8 +146,8 @@ defmodule Polyglot do
   defp parse_tree(tokens, olist) do
     case tokens do
       [:hash, :open | rest] ->
-        case { clause, rest } = parse_tree(rest, []) do
-          { [ raw_var ], rest } ->
+        case {clause, rest} = parse_tree(rest, []) do
+          {:partial, {[raw_var], rest}} ->
             var_name = raw_var |> String.strip |> String.downcase
             if Regex.match?(~r/^[a-z][a-z0-9_-]*$/, var_name) do
               parse_tree(rest, [{:variable, String.to_atom(var_name)}|olist])
@@ -163,15 +157,15 @@ defmodule Polyglot do
           _ -> {:error, "Unrecognised variable reference"}
         end
       [:open | rest] ->
-        { clause, rest } = parse_tree(rest, [])
+        {:partial, {clause, rest}} = parse_tree(rest, [])
         clause = parse_clause(clause)
         parse_tree(rest, [clause|olist])
       [:close | rest] ->
-        { Enum.reverse(olist), rest }
+        {:partial, {Enum.reverse(olist), rest}}
       [x | rest] ->
         parse_tree(rest, [x|olist])
       [] ->
-        Enum.reverse(olist)
+        {:ok, Enum.reverse(olist)}
     end
   end
 
