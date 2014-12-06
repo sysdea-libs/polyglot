@@ -9,7 +9,7 @@ defmodule Polyglot.Mixfile do
      package: [
       contributors: ["Chris Spencer"],
       licenses: ["MIT"],
-      links: %{github: "https://github.com/strategydynamics/polyglot"}
+      links: %{github: "https://github.com/sysdea-libs/polyglot"}
      ],
      description: "MessageFormat-like implementation (Select/Plural/Range/Ordinal) for i18n."]
   end
