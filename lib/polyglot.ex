@@ -24,11 +24,10 @@ defmodule Polyglot do
 
   defmacro locale(lang, path) do
     quote bind_quoted: binding do
+      @external_resource path
       for {key, string} <- Polyglot.Compiler.load_file(path) do
         locale_string(lang, key, string)
       end
     end
   end
-
-
 end
