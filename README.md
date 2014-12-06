@@ -2,9 +2,11 @@
 
 An implementation of a MessageFormat-like string interpolator (PluralFormat + SelectFormat) in Elixir, for the purposes of translation when plural and gender forms are needed, especially when used together inside sentences ("She found 3 categories in one result"). Features ordinal/range extensions in addition to cardinal plurality and selection.
 
+Polyglot is useful even if your needs are currently monolingual, for instance consider correctly producing the string "You are the 22nd visitor". A pleasant side-effect of solving that formatting can be making your application at least partly translation ready in the future.
+
 ## Stability
 
-Polyglot is still in the early stages of development. Although the general syntax is fixed, calling conventions and API are still open to change.
+Polyglot is still in the early stages of development. Although the general syntax is fixed, the API is still open to change.
 
 # Message Syntax
 
