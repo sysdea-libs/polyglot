@@ -159,7 +159,7 @@ defmodule Polyglot.Compiler do
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end
-    printer = quote do: Polyglot.Compiler.ensure_string(unquote(accessor))
+    printer = quote do: to_string(unquote(accessor))
 
     clauses = Enum.map(m, fn({ k, v }) ->
       {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
@@ -176,7 +176,7 @@ defmodule Polyglot.Compiler do
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end
-    printer = quote do: Polyglot.Compiler.ensure_string(unquote(accessor))
+    printer = quote do: to_string(unquote(accessor))
 
     clauses = Enum.map(m, fn({ k, v }) ->
       {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
@@ -208,13 +208,11 @@ defmodule Polyglot.Compiler do
 
   # Generic recursive compile for lists and possibly stranded tokens
   def compile(tokens, env) when is_list(tokens) do
-    tokens
-    |> Enum.map(fn (t) -> compile(t, env) end)
-    |> Enum.reduce(&quote do: unquote(&2) <> unquote(&1))
+    for token <- tokens, do: compile(token, env)
   end
   def compile({:variable, var_name}, env) do
     quote do
-      Polyglot.Compiler.ensure_string unquote(env.args)[unquote(var_name)]
+      to_string unquote(env.args)[unquote(var_name)]
     end
   end
   def compile(:hash, env) do
@@ -224,9 +222,7 @@ defmodule Polyglot.Compiler do
   def compile(s, _env) when is_bitstring(s), do: s
 
   # Output helpers
-  def ensure_string(n) when is_bitstring(n), do: n
-  def ensure_string(n), do: inspect(n)
   def format_range({from, to}) do
-    "#{ensure_string from}-#{ensure_string to}"
+    "#{to_string from}-#{to_string to}"
   end
 end
