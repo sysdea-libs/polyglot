@@ -4,9 +4,6 @@ defmodule Polyglot do
 
   defmacro __using__(_env) do
     quote do
-      @before_compile Polyglot
-      Module.register_attribute(__MODULE__, :translate_fns, accumulate: true)
-
       use Polyglot.Plural
       import Polyglot
 
@@ -15,91 +12,62 @@ defmodule Polyglot do
       defp format_range({from, to}) do
         "#{ensure_string from}-#{ensure_string to}"
       end
-    end
-  end
 
-  # Shim in <name>/2 head function for each distinct function generated.
-  defmacro __before_compile__(env) do
-    fns = Module.get_attribute(env.module, :translate_fns)
-
-    if is_atom(fns) do
-      init_fn(fns)
-    else
-      fns
-      |> Enum.into(HashSet.new)
-      |> Enum.map(&init_fn(&1))
-    end
-  end
-
-  defp init_fn(name) do
-    quote do
-      def unquote(name)(lang, key) do
-        unquote(name)(lang, key, %{})
+      def t!(lang, key) do
+        t!(lang, key, %{})
       end
     end
   end
 
   # defines a name(lang, key, options) function
   # eg compile_string(:t!, "en", "test", "my test string")
-  defmacro function_from_string(name, lang, key, string) do
+  defmacro locale_string(lang, key, string) do
     quote bind_quoted: binding do
       {args, body} = compile_string!(lang, key, string)
       @plurals lang
-      @translate_fns name
-      def unquote(name)(unquote_splicing(args)), do: unquote(body)
+      def t!(unquote_splicing(args)), do: unquote(body)
     end
   end
 
-  defmacro function_from_file(name, path) do
+  defmacro locale(lang, path) do
     quote bind_quoted: binding do
-      for {lang, key, string} <- Polyglot.load_file(path) do
-        function_from_string(name, lang, key, string)
+      for {key, string} <- Polyglot.load_file(path) do
+        locale_string(lang, key, string)
       end
     end
   end
 
   def compile_string!(lang, key, string) do
+    Logger.debug "Compiling t!(#{inspect lang}, #{inspect key}, string)"
+
     stripped = String.strip(string)
     args = Macro.var(:args, :polyglot)
     {:ok, parse_tree} = parse(stripped)
     ast = compile(parse_tree, %{lang: lang, args: args})
-
-    Logger.debug fn ->
-      """
-      Compiled string:
-      #{stripped}
-        =>
-      #{Macro.to_string(ast)}
-      """
-    end
 
     {[lang, key, args], ast}
   end
 
   # Load a file into [{lang, name, string}, ...]
   def load_file(path) do
-    {lang, messages, name, buffer} = File.stream!(path)
-                                     |> Enum.reduce({nil, [], nil, nil}, &parse_line(&1, &2))
+    {messages, name, buffer} = File.stream!(path)
+                               |> Enum.reduce({[], nil, nil}, &parse_line(&1, &2))
 
-    [{lang, name, String.strip(buffer)}|messages]
+    [{name, String.strip(buffer)}|messages]
   end
 
   defp parse_line(line, state) do
     case {line, state} do
-      {<<"LANG=", lang::binary>>, {_, [], nil, nil}} ->
-        {String.strip(lang), [], nil, nil}
-      {<<"LANG=", newlang::binary>>, {lang, messages, name, buffer}} ->
-        {String.strip(newlang), [{lang, name, String.strip(buffer)}|messages], nil, nil}
-      {<<"@", newname::binary>>, {lang, messages, nil, nil}} ->
-        {lang, messages, String.strip(newname), ""}
-      {<<"@", newname::binary>>, {lang, messages, name, buffer}} ->
-        {lang, [{lang, name, String.strip(buffer)}|messages], String.strip(newname), ""}
+      {<<"@", newname::binary>>, {messages, nil, nil}} ->
+        {messages, String.strip(newname), ""}
+      {<<"@", newname::binary>>, {messages, name, buffer}} ->
+        {[{name, String.strip(buffer)}|messages], String.strip(newname), ""}
       {<<"--", _::binary>>, state} ->
         state
-      {_, {_, _, nil, nil}=state} ->
+      {_, {_, nil, nil}=state} ->
         state
-      {line, {lang, messages, name, buffer}} ->
-        {lang, messages, name, "#{buffer}\n#{line}"}
+      {line, {messages, name, buffer}} ->
+        {messages, name, "#{buffer}\n#{line}"}
     end
   end
 

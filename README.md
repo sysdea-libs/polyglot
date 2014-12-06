@@ -96,11 +96,11 @@ Perhaps useful when you have very few translations, or just need to test functio
 defmodule I18n do
   use Polyglot
 
-  function_from_string :t!, "en", "simple", "My simple string."
+  locale_string "en", "simple", "My simple string."
 
-  function_from_string :t!, "en", "interpolate", "Hello \#{NAME}."
+  locale_string "en", "interpolate", "Hello \#{NAME}."
 
-  function_from_string :t!, "en", "plural", """
+  locale_string "en", "plural", """
   {NUM, plural,
     one {one item}
   other {# items}}.
@@ -119,11 +119,9 @@ I18n.t!("en", "plural", %{num: 5})
 
 ## Lang files
 
-Lang files let you package up message definitions together, along with comments and which language they define. Using special non-code files for translations makes character escaping issues less prominent, and getting new translations made from translators much easier (and the format is simple to parse for integrating into other workflows).
+Lang files let you package up message definitions together, along with comments. Using special non-code files for translations makes character escaping issues less prominent, and getting new translations made from translators much easier (and the format is simple to parse for integrating into other workflows).
 
 ```
-LANG=en
-
 This is a comment that precedes the strings.
 
 @test message
@@ -141,7 +139,7 @@ Hello from the translator.
 defmodule I18n do
   use Polyglot
 
-  function_from_file :t!, :code.priv_dir(:polyglot) ++ '/lang/en.lang'
+  locale "en", Path.join([__DIR__, "/locales/en.lang"])
 end
 
 I18n.t!("en", "test message")

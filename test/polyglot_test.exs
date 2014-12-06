@@ -1,17 +1,17 @@
 defmodule PolyglotTest.C do
   use Polyglot
 
-  function_from_string :t!, "en", "simple", "My simple string."
+  locale_string "en", "simple", "My simple string."
 
-  function_from_string :t!, "en", "interpolate", "Hello \#{NAME}."
+  locale_string "en", "interpolate", "Hello \#{NAME}."
 
-  function_from_string :t!, "en", "plural", """
+  locale_string "en", "plural", """
   {NUM, plural,
     one {one item}
   other {# items}}
   """
 
-  function_from_string :t!, "en", "select+plural", """
+  locale_string "en", "select+plural", """
   {GENDER, select,
       male {He}
     female {She}
@@ -25,7 +25,7 @@ defmodule PolyglotTest.C do
             }.
   """
 
-  function_from_string :t!, "de", "select+plural", """
+  locale_string "de", "select+plural", """
   {GENDER, select,
       male {Er}
     female {Sie}
@@ -39,7 +39,7 @@ defmodule PolyglotTest.C do
             }.
   """
 
-  function_from_string :t!, "en", "ordinal", """
+  locale_string "en", "ordinal", """
   You came in {PLACE, ordinal,
                   one {#st}
                   two {#nd}
@@ -47,7 +47,7 @@ defmodule PolyglotTest.C do
                 other {#th}} place.
   """
 
-  function_from_string :t!, "cs", "range", """
+  locale_string "cs", "range", """
   {RANGE, range,
       one {# den}
       few {# dny}
@@ -55,7 +55,7 @@ defmodule PolyglotTest.C do
     other {# dní}}.
   """
 
-  function_from_file :t!, __DIR__ <> "/fixtures/en.lang"
+  locale "en", Path.join(__DIR__, "/fixtures/en.lang")
 end
 
 defmodule PolyglotTest do

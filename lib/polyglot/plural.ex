@@ -53,6 +53,8 @@ defmodule Polyglot.Plural do
   defp compile_lang(lang) do
     {cardinals, ordinals, ranges} = load(lang)
 
+    Logger.debug "Compiling plural(#{inspect lang}, kind, n)"
+
     [compile_plurals(cardinals, lang, :cardinal),
      compile_plurals(ordinals, lang, :ordinal),
      compile_ranges(ranges, lang)]
@@ -91,7 +93,7 @@ defmodule Polyglot.Plural do
                 {:=, [], [v, compile_dep(v, n, string_n)]}
               end
 
-    ast = quote do
+    quote do
       defp do_plural(unquote(lang), unquote(kind), unquote(n), unquote(string_n)) do
         unquote_splicing(prelude)
         cond do
@@ -99,17 +101,6 @@ defmodule Polyglot.Plural do
         end
       end
     end
-
-    Logger.debug fn ->
-      """
-      Compiled plural:
-      #{inspect(rules)}
-        =>
-      #{Macro.to_string(ast)}
-      """
-    end
-
-    ast
   end
 
   # Shared structure for v/f/t
