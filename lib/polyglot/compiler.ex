@@ -12,7 +12,7 @@ defmodule Polyglot.Compiler do
     {[lang, key, args], ast}
   end
 
-  # Load a file into [{lang, name, string}, ...]
+  # Load a file into [{name, string}, ...]
   def load_file(path) do
     {messages, name, buffer} = File.stream!(path)
                                |> Enum.reduce({[], nil, nil}, &parse_line(&1, &2))

@@ -12,8 +12,8 @@ defmodule Polyglot do
     end
   end
 
-  # defines a name(lang, key, options) function
-  # eg compile_string(:t!, "en", "test", "my test string")
+  # defines a t!(lang, key, options) function
+  # eg `locale_string "en", "test", "my test string"`
   defmacro locale_string(lang, key, string) do
     quote bind_quoted: binding do
       {args, body} = Polyglot.Compiler.compile_string!(lang, key, string)
@@ -22,6 +22,8 @@ defmodule Polyglot do
     end
   end
 
+  # Loads locale_string definitions from a file
+  # eg `locale "en", Path.join([__DIR__, "/locales/en.lang"])`
   defmacro locale(lang, path) do
     quote bind_quoted: binding do
       @external_resource path
