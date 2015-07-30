@@ -28,8 +28,5 @@ defmodule Polyglot.Plural do
     do_plural(lang, kind, n, string_n)
   end
 
-  # TODO: detect languages in xml and compile all.
-  load "en"
-  load "de"
-  load "cs"
+  load_all
 end

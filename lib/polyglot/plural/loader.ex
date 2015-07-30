@@ -3,24 +3,32 @@ defmodule Polyglot.Plural.Loader do
   Record.defrecordp :xmlAttribute, Record.extract(:xmlAttribute, from_lib: "xmerl/include/xmerl.hrl")
   Record.defrecordp :xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl")
 
-  def load_plural_rules(lang, file) do
+  def load_all_plurals(file) do
     xml = xml_file(:code.priv_dir(:polyglot) ++ file)
-    qs = "//pluralRules[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRule"
+    qs = "//pluralRules"
     for el <- q(qs, xml) do
-      [xmlAttribute(value: count)] = q("./@count", el)
-      [xmlText(value: rule)] = q("./text()", el)
-      {List.to_string(count), extract_rule(rule)}
+      [xmlAttribute(value: locales)] = q("./@locales", el)
+      rules = for el2 <- q("./pluralRule", el) do
+        [xmlAttribute(value: count)] = q("./@count", el2)
+        [xmlText(value: rule)] = q("./text()", el2)
+        {List.to_string(count), extract_rule(rule)}
+      end
+      {locales, rules}
     end
   end
 
-  def load_range_rules(lang, file) do
+  def load_all_ranges(file) do
     xml = xml_file(:code.priv_dir(:polyglot) ++ file)
-    qs = "//pluralRanges[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRange"
+    qs = "//pluralRanges"
     for el <- q(qs, xml) do
-      [xmlAttribute(value: result)] = q("./@result", el)
-      [xmlAttribute(value: from)] = q("./@start", el)
-      [xmlAttribute(value: to)] = q("./@end", el)
-      {List.to_string(result), List.to_string(from), List.to_string(to)}
+      [xmlAttribute(value: locales)] = q("./@locales", el)
+      rules = for el2 <- q("./pluralRange", el) do
+        [xmlAttribute(value: result)] = q("./@result", el2)
+        [xmlAttribute(value: from)] = q("./@start", el2)
+        [xmlAttribute(value: to)] = q("./@end", el2)
+        {List.to_string(result), List.to_string(from), List.to_string(to)}
+      end
+      {locales, rules}
     end
   end
 

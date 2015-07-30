@@ -2,17 +2,37 @@ defmodule Polyglot.Plural.Compiler do
   alias Polyglot.Plural.Parser
   alias Polyglot.Plural.Loader
 
-  def compile_ranges(rules, lang) do
+  defmacro load_all do
+    cardinals = for {locales, rules} <- Loader.load_all_plurals('/plurals.xml') do
+      compile_plurals(rules, locales, :cardinal)
+    end
+
+    ordinals = for {locales, rules} <- Loader.load_all_plurals('/ordinals.xml') do
+      compile_plurals(rules, locales, :ordinal)
+    end
+
+    ranges = for {locales, rules} <- Loader.load_all_ranges('/pluralRanges.xml') do
+      compile_ranges(rules, locales)
+    end
+
+    [cardinals, ordinals, ranges]
+  end
+
+  def compile_ranges(rules, locales) do
     clauses = for {result, from, to} <- rules do
       quote do
         {unquote(from), unquote(to)} -> unquote(result)
       end
     end
 
+    langs = locales
+            |> to_string
+            |> String.split(" ")
+
     quote do
-      defp do_plural(unquote(lang), :range, {from, to}) do
-        from = pluralise(unquote(lang), :cardinal, from)
-        to = pluralise(unquote(lang), :cardinal, to)
+      defp do_plural(lang, :range, {from, to}) when lang in unquote(langs) do
+        from = pluralise(lang, :cardinal, from)
+        to = pluralise(lang, :cardinal, to)
         case {from, to} do
           unquote(List.flatten clauses)
         end
@@ -21,7 +41,7 @@ defmodule Polyglot.Plural.Compiler do
   end
 
   # Compiles a list of rules into a def
-  def compile_plurals(rules, lang, kind) do
+  def compile_plurals(rules, locales, kind) do
     {clauses, deps} = Enum.map_reduce rules, HashSet.new,
                         fn({name, rule}, alldeps) ->
                           {tree, deps} = Parser.parse(rule)
@@ -36,8 +56,12 @@ defmodule Polyglot.Plural.Compiler do
                 {:=, [], [v, compile_dep(v, n, string_n)]}
               end
 
+    langs = locales
+            |> to_string
+            |> String.split(" ")
+
     quote do
-      defp do_plural(unquote(lang), unquote(kind), unquote(n), unquote(string_n)) do
+      defp do_plural(lang, unquote(kind), unquote(n), unquote(string_n)) when lang in unquote(langs) do
         unquote_splicing(prelude)
         cond do
           unquote(clauses)
@@ -64,19 +88,6 @@ defmodule Polyglot.Plural.Compiler do
     end
   end
 
-  defmacro load(lang) do
-    cardinals = Loader.load_plural_rules(lang, '/plurals.xml')
-                |> compile_plurals(lang, :cardinal)
-
-    ordinals = Loader.load_plural_rules(lang, '/ordinals.xml')
-               |> compile_plurals(lang, :ordinal)
-
-    ranges = Loader.load_range_rules(lang, '/pluralRanges.xml')
-             |> compile_ranges(lang)
-
-    [cardinals, ordinals, ranges]
-  end
-
   # Compile out the tree into elixir forms
   @op_map %{or: :or,
             and: :and,
@@ -89,7 +100,9 @@ defmodule Polyglot.Plural.Compiler do
       {:number, n} -> n
       {:var, v} -> v
       {:binary, :eq, l, {:list, vs}} ->
-        for v <- vs, do: compile({:binary, :eq, l, v})
+        compiled = for v <- vs, do: compile({:binary, :eq, l, v})
+
+        compiled
         |> Enum.reduce(&quote do: unquote(&2) or unquote(&1))
       {:binary, :eq, l, {:binary, :range, lr, rr}} ->
         quote do: unquote(compile(l)) in unquote(compile(lr))..unquote(compile(rr))
