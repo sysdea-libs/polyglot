@@ -1,7 +1,6 @@
 defmodule Polyglot.Plural.Compiler do
-  require Record
-  Record.defrecordp :xmlAttribute, Record.extract(:xmlAttribute, from_lib: "xmerl/include/xmerl.hrl")
-  Record.defrecordp :xmlText, Record.extract(:xmlText, from_lib: "xmerl/include/xmerl.hrl")
+  alias Polyglot.Plural.Parser
+  alias Polyglot.Plural.Loader
 
   def compile_ranges(rules, lang) do
     clauses = for {result, from, to} <- rules do
@@ -25,7 +24,8 @@ defmodule Polyglot.Plural.Compiler do
   def compile_plurals(rules, lang, kind) do
     {clauses, deps} = Enum.map_reduce rules, HashSet.new,
                         fn({name, rule}, alldeps) ->
-                          {ast, deps} = parse(rule)
+                          {tree, deps} = Parser.parse(rule)
+                          ast = compile(tree)
                           {{:->, [], [[ast], name]}, Set.union(alldeps, deps)}
                         end
 
@@ -65,137 +65,16 @@ defmodule Polyglot.Plural.Compiler do
   end
 
   defmacro load(lang) do
-    cardinals = load_plural_file(lang, '/plurals.xml')
+    cardinals = Loader.load_plural_rules(lang, '/plurals.xml')
                 |> compile_plurals(lang, :cardinal)
 
-    ordinals = load_plural_file(lang, '/ordinals.xml')
+    ordinals = Loader.load_plural_rules(lang, '/ordinals.xml')
                |> compile_plurals(lang, :ordinal)
 
-    ranges = load_range_file(lang, '/pluralRanges.xml')
+    ranges = Loader.load_range_rules(lang, '/pluralRanges.xml')
              |> compile_ranges(lang)
 
     [cardinals, ordinals, ranges]
-  end
-
-  # Load a langs plurals from the XML
-  defp load_plural_file(lang, file) do
-    xml = xml_file(:code.priv_dir(:polyglot) ++ file)
-    qs = "//pluralRules[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRule"
-    for el <- q(qs, xml) do
-      [xmlAttribute(value: count)] = q("./@count", el)
-      [xmlText(value: rule)] = q("./text()", el)
-      {List.to_string(count), extract_rule(rule)}
-    end
-  end
-  defp load_range_file(lang, file) do
-    xml = xml_file(:code.priv_dir(:polyglot) ++ file)
-    qs = "//pluralRanges[contains(concat(' ', @locales, ' '), ' #{lang} ')]/pluralRange"
-    for el <- q(qs, xml) do
-      [xmlAttribute(value: result)] = q("./@result", el)
-      [xmlAttribute(value: from)] = q("./@start", el)
-      [xmlAttribute(value: to)] = q("./@end", el)
-      {List.to_string(result), List.to_string(from), List.to_string(to)}
-    end
-  end
-  defp xml_file(path) do
-    {:ok, f} = :file.read_file(path)
-
-    {xml, _} = f
-               |> :binary.bin_to_list
-               |> :xmerl_scan.string
-
-    xml
-  end
-  defp q(s, xml) do
-    :xmerl_xpath.string(to_char_list(s), xml)
-  end
-  defp extract_rule(rule) do
-    Regex.run(~r/^[^@]*/, List.to_string(rule))
-    |> List.first
-    |> String.strip
-  end
-
-  # Parse a string into {ast, deps}
-  defp parse("") do
-    {true, HashSet.new}
-  end
-  defp parse(str) do
-    {tokens, deps} = tokenise(str, [], HashSet.new)
-    {parse_tree(tokens, [], []) |> compile, deps}
-  end
-
-  # Tokenise string, using simple recursive peeking
-  defp tokenise(str, tokens, deps) do
-    case str do
-      "" -> {Enum.reverse(tokens), deps}
-
-      <<"and", str::binary>> -> tokenise(str, [{:op,:and}|tokens], deps)
-      <<"or", str::binary>> -> tokenise(str, [{:op,:or}|tokens], deps)
-      <<"..", str::binary>> -> tokenise(str, [{:op,:range}|tokens], deps)
-      <<"!=", str::binary>> -> tokenise(str, [{:op,:neq}|tokens], deps)
-      <<"%", str::binary>> -> tokenise(str, [{:op,:mod}|tokens], deps)
-      <<"=", str::binary>> -> tokenise(str, [{:op,:eq}|tokens], deps)
-      <<",", str::binary>> -> tokenise(str, [{:op,:comma}|tokens], deps)
-
-      <<" ", str::binary>> -> tokenise(str, tokens, deps)
-
-      <<c::binary-size(1), str::binary>> when c == "n" or c == "i" or c == "f"
-                                           or c == "t" or c == "v" or c == "w" ->
-        v = Macro.var(String.to_atom(c), :plural)
-        if c == "n" do
-          tokenise(str, [{:var,v}|tokens], deps)
-        else
-          tokenise(str, [{:var,v}|tokens], Set.put(deps, v))
-        end
-
-      str ->
-        case Regex.run(~r/^[0-9]+/, str) do
-          [n] ->
-            len = String.length(n)
-            str = String.slice(str, len, String.length(str) - len)
-            {i, ""} = Integer.parse(n)
-            tokenise(str, [{:number, i}|tokens], deps)
-          nil -> {:error, "Couldn't parse rule.", str}
-        end
-    end
-  end
-
-  # Parse tokens into a tree, using a shunting-yard parser
-  @precedences %{or: 1,
-                 and: 2,
-                 neq: 3, eq: 3,
-                 mod: 4,
-                 comma: 5,
-                 range: 6}
-
-  defp parse_tree(tokens, opstack, output) do
-    case {tokens, opstack, output} do
-      {[], [], [result]} ->
-        result
-      {[], [op|opstack], output} ->
-        push_op(op, [], opstack, output)
-      {[{:op, o1}|rest], [], output} ->
-        parse_tree(rest, [o1], output)
-      {[{:op, o1}|rest]=tokens, [o2|opstack], output} ->
-        if @precedences[o1] <= @precedences[o2] do
-          push_op(o2, tokens, opstack, output)
-        else
-          parse_tree(rest, [o1,o2|opstack], output)
-        end
-      {[node|rest], opstack, output} ->
-        parse_tree(rest, opstack, [node|output])
-    end
-  end
-
-  defp push_op(op, tokens, opstack, [r,l|output]) do
-    case {op, l} do
-      {:comma, {:list, vs}} ->
-        parse_tree(tokens, opstack, [{:list, [r|vs]}|output])
-      {:comma, _} ->
-        parse_tree(tokens, opstack, [{:list, [r,l]}|output])
-      _ ->
-        parse_tree(tokens, opstack, [{:binary, op, l, r}|output])
-    end
   end
 
   # Compile out the tree into elixir forms
@@ -206,6 +85,7 @@ defmodule Polyglot.Plural.Compiler do
 
   defp compile(form) do
     case form do
+      true -> true
       {:number, n} -> n
       {:var, v} -> v
       {:binary, :eq, l, {:list, vs}} ->
