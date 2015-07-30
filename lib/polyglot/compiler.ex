@@ -74,12 +74,25 @@ defmodule Polyglot.Compiler do
   # Parse tokens out into nested lists of list|tuple|string|atom
   defp parse_tree(tokens, output) do
     case tokens do
-      [:hash, :open | rest] ->
-        {:partial, {clause, rest}} = parse_tree(rest, [])
-        parse_tree(rest, [parse_variable(clause)|output])
+      [:open, arg, :close | rest] ->
+        arg = arg |> String.strip |> String.downcase
+        parse_tree(rest, [{:variable, arg}|output])
+      [:open, arg, :comma, method, :comma | rest] ->
+        {:partial, {body, rest}} = parse_body(rest, %{})
+
+        method = case String.strip(method) do
+          "select" -> :select
+          "ordinal" -> :ordinal
+          "plural" -> :plural
+          "range" -> :range
+        end
+
+        arg = arg |> String.strip |> String.downcase
+
+        parse_tree(rest, [{method, arg, body}|output])
       [:open | rest] ->
         {:partial, {clause, rest}} = parse_tree(rest, [])
-        parse_tree(rest, [parse_formatter(clause)|output])
+        parse_tree(rest, [clause|output])
       [:close | rest] ->
         {:partial, {Enum.reverse(output), rest}}
       [x | rest] ->
@@ -89,57 +102,22 @@ defmodule Polyglot.Compiler do
     end
   end
 
-  # Checks head of list to be a valid variable identifier, and if so
-  # calls the passed fn with it, otherwise returning the full token list.
-  # Doesn't atomise the var name yet, due to possible false positives.
-  defp check_arg([arg|_rest]=tokens, f) do
-    var_name = arg |> String.strip |> String.downcase
-    if Regex.match?(~r/^[a-z][a-z0-9_-]*$/, var_name) do
-      f.(var_name)
-    else
-      tokens
+  defp parse_body([value, :open | rest], output) do
+    {:partial, {clause, rest}} = parse_tree(rest, [])
+    parse_body(rest, Map.put(output, String.strip(value), clause))
+  end
+  defp parse_body([:close | rest], output) do
+    {:partial, {output, rest}}
+  end
+  defp parse_body([other | rest], output) do
+    case String.strip(other) do
+      "" -> parse_body(rest, output)
+      text -> {:unexpected, text}
     end
-  end
-
-  defp parse_variable([_arg]=tokens) do
-    check_arg(tokens, &({:variable, String.to_atom(&1)}))
-  end
-  defp parse_variable(tokens), do: tokens
-
-  defp parse_formatter([_arg, :comma, format | rest]=tokens) do
-    check_arg(tokens, &formatter([&1, String.strip(format) | rest]))
-  end
-  defp parse_formatter(tokens), do: tokens
-
-  # Match formatters
-  defp formatter([arg, "select", :comma|body]) do
-    {:select, arg, extract(body)}
-  end
-  defp formatter([arg, "ordinal", :comma|body]) do
-    {:ordinal, arg, extract(body)}
-  end
-  defp formatter([arg, "plural", :comma|body]) do
-    {:plural, arg, extract(body)}
-  end
-  defp formatter([arg, "range", :comma|body]) do
-    {:range, arg, extract(body)}
-  end
-  defp formatter(tokens), do: tokens
-
-  # Transform a list of tokens into a map
-  # Helper function used by the Formatters
-  # [" a ", :hash, "c  ", ["my data"]] -> %{"a"=>:hash, "c"=>["my data"]}
-  defp extract(tokens) do
-    for [k,v] <- tokens
-                 |> Enum.map(fn s when is_bitstring(s) -> String.strip(s)
-                                t -> t end)
-                 |> Enum.filter(&(&1 != ""))
-                 |> Enum.chunk(2), do: {k, v}, into: %{}
   end
 
   # Formatter compilers
   def compile({:select, arg, m}, env) do
-    arg = String.to_atom(arg)
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end
@@ -155,7 +133,6 @@ defmodule Polyglot.Compiler do
     end
   end
   def compile({:ordinal, arg, m}, env) do
-    arg = String.to_atom(arg)
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end
@@ -172,7 +149,6 @@ defmodule Polyglot.Compiler do
     end
   end
   def compile({:plural, arg, m}, env) do
-    arg = String.to_atom(arg)
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end
@@ -189,7 +165,6 @@ defmodule Polyglot.Compiler do
     end
   end
   def compile({:range, arg, m}, env) do
-    arg = String.to_atom(arg)
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end

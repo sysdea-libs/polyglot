@@ -15,7 +15,7 @@ Polyglot is still in the early stages of development. Although the general synta
 Provides no formatting other than ensuring that the parameter is printed as a string.
 
 ```
-Hello #{NAME}.
+Hello {NAME}.
 
 # %{name: "Chris"} => "Hello Chris."
 ```
@@ -86,11 +86,15 @@ The argument for a range should be a tuple of two numbers {a, b} and will be pri
 
 ## Parameters
 
-Parameters for a string should be provided in a map with atom keys. The names are downcased from their definitions inside the translation files. When providing numbers, you can provide any of integer, float or string. If you need a number formatted, especially decimals, you should format them as a string prior to calling.
+Parameters for a string should be provided in a map with string keys. The names are downcased from their definitions inside the translation files. When providing numbers, you can provide any of integer, float or string. If you need a number formatted, especially decimals, you should format them as a string prior to calling.
 
 Polyglot currently has no knowledge of decimal rules, and will treat either `.` or `,` as the decimal separator when found. It is therefore incompatible with numbers formatted with thousands separators such as `1,234.56`.
 
-## Inline string definitions
+## Ahead of time compilation
+
+Useful when you have a stable codebase or deployment that does not need to update language definitions dynamically.
+
+### Inline string definitions
 
 Perhaps useful when you have very few translations, or just need to test functionality quickly.
 
@@ -119,7 +123,7 @@ I18n.t!("en", "plural", %{num: 5})
 # => "5 items."
 ```
 
-## Lang files
+### Lang files
 
 Lang files let you package up message definitions together, along with comments. Using special non-code files for translations makes character escaping issues less prominent, and getting new translations made from translators much easier (and the format is simple to parse for integrating into other workflows).
 
@@ -151,6 +155,10 @@ I18n.t!("en", "test message 2", %{num: 5})
 # => "5 items."
 ```
 
+## Interpreted
+
+TODO.
+
 # Roadmap
 
 - [x] Simple variable interpolation
@@ -159,6 +167,7 @@ I18n.t!("en", "test message 2", %{num: 5})
 - [x] Ordinal pluralisation
 - [x] Range pluralisation
 - [x] Compile from standalone files as well as embedded strings
+- [ ] Interpreted option for updating translations at runtime.
 - [ ] Lint plural/ordinal/range to check cases covered.
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?).
 - [x] Accept strings for plural/ordinal/range.
