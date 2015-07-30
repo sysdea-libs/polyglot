@@ -40,7 +40,7 @@ defmodule Polyglot.Compiler do
     end)
 
     quote do
-      case plural(unquote(env.lang), :ordinal, unquote(accessor)) do
+      case Polyglot.Plural.pluralise(unquote(env.lang), :ordinal, unquote(accessor)) do
         unquote(clauses)
       end
     end
@@ -56,7 +56,7 @@ defmodule Polyglot.Compiler do
     end)
 
     quote do
-      case plural(unquote(env.lang), :cardinal, unquote(accessor)) do
+      case Polyglot.Plural.pluralise(unquote(env.lang), :cardinal, unquote(accessor)) do
         unquote(clauses)
       end
     end
@@ -72,7 +72,7 @@ defmodule Polyglot.Compiler do
     end)
 
     quote do
-      case plural(unquote(env.lang), :range, unquote(accessor)) do
+      case Polyglot.Plural.pluralise(unquote(env.lang), :range, unquote(accessor)) do
         unquote(clauses)
       end
     end

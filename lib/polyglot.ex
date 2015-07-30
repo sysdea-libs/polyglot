@@ -3,7 +3,6 @@ defmodule Polyglot do
 
   defmacro __using__(_env) do
     quote do
-      use Polyglot.Plural
       import Polyglot
 
       def t!(lang, key) do

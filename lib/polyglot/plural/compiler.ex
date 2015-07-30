@@ -12,8 +12,8 @@ defmodule Polyglot.Plural.Compiler do
 
     quote do
       defp do_plural(unquote(lang), :range, {from, to}) do
-        from = plural(unquote(lang), :cardinal, from)
-        to = plural(unquote(lang), :cardinal, to)
+        from = pluralise(unquote(lang), :cardinal, from)
+        to = pluralise(unquote(lang), :cardinal, to)
         case {from, to} do
           unquote(List.flatten clauses)
         end
@@ -64,10 +64,17 @@ defmodule Polyglot.Plural.Compiler do
     end
   end
 
-  def load(lang) do
-    {load_plural_file(lang, '/plurals.xml'),
-     load_plural_file(lang, '/ordinals.xml'),
-     load_range_file(lang, '/pluralRanges.xml')}
+  defmacro load(lang) do
+    cardinals = load_plural_file(lang, '/plurals.xml')
+                |> compile_plurals(lang, :cardinal)
+
+    ordinals = load_plural_file(lang, '/ordinals.xml')
+               |> compile_plurals(lang, :ordinal)
+
+    ranges = load_range_file(lang, '/pluralRanges.xml')
+             |> compile_ranges(lang)
+
+    [cardinals, ordinals, ranges]
   end
 
   # Load a langs plurals from the XML
