@@ -116,34 +116,55 @@ Useful when you have a stable codebase or deployment that does not need to updat
 
 Perhaps useful when you have very few translations, or just need to test functionality quickly.
 
+The macro `locale_string` takes parameters (lang, domain, key, template), and generates a function of the form `ldt!(lang, domain, key, args \\ %{})`. Also included are shortcut functions: `t!(key, args \\ %{})` uses the current lang and `"default"` domain. `dt!(domain, key, args \\ %{})` and `lt!(lang, key, args \\ %{})` allow you to override one or the other of domain and lang.
+
 ```elixir
 defmodule I18n do
   use Polyglot
 
-  locale_string "en", "simple", "My simple string."
+  locale_string "en", "default", "simple", "My simple string."
 
-  locale_string "en", "interpolate", "Hello {NAME}."
+  locale_string "en", "default", "interpolate", "Hello {NAME}."
 
-  locale_string "en", "plural", """
+  locale_string "en", "default", "plural", """
   {NUM, plural,
     one {one item}
   other {# items}}.
   """
 end
 
-I18n.t!("en", "simple")
+I18n.t!("simple")
 # => "My simple string."
 
-I18n.t!("en", "interpolate", %{"name" => "Chris"})
+I18n.t!("interpolate", %{"name" => "Chris"})
 # => "Hello Chris."
 
-I18n.t!("en", "plural", %{"num" => 5})
+I18n.t!("plural", %{"num" => 5})
 # => "5 items."
 ```
 
 ### Lang files
 
-Lang files let you package up message definitions together, along with comments. Using special non-code files for translations makes character escaping issues less prominent, and getting new translations made from translators much easier (and the format is simple to parse for integrating into other workflows).
+Lang files are in a simple format which lets you package up message definitions together, along with comments. It is designed with a linear unrestrictive syntax requiring little escaping for messages. Identifiers for messages are marked with an @ at the start of a line, and text following it is then used as the definition body.
+
+Support for .po and ICU resource bundles is possible in the future, for integrating with existing translation systems.
+
+Lang files are organised akin to the gettext .po layout. This structure gives space for adding additional file requirements when supporting number formatting etc in future, as well as allowing mixing of formats if migration between formats is needed.
+
+```
+priv
+`--locales
+   |--en_US
+   |  `--LC_MESSAGES
+   |     |--default.lang
+   |     |--client.lang
+   |     `--errors.lang
+   `--fr
+      `--LC_MESSAGES
+         |--default.lang
+         |--client.lang
+         `--errors.lang
+```
 
 ```
 This is a comment that precedes the strings.
@@ -151,7 +172,7 @@ This is a comment that precedes the strings.
 @test message
 Hello from the translator.
 
--- and this is a comment inbetween strings
+; and this is a comment inbetween strings
 
 @test message 2
 {NUM, plural,
@@ -163,7 +184,7 @@ Hello from the translator.
 defmodule I18n do
   use Polyglot
 
-  locale "en", Path.join([__DIR__, "/locales/en.lang"])
+  load_directory Path.join([__DIR__, "/locales"])
 end
 
 I18n.t!("en", "test message")
@@ -192,6 +213,7 @@ Polyglot.Interpreter.interpet("en", "Hello {name}!", %{"name" => "John"})
 - [x] Compile from standalone files as well as embedded strings
 - [x] Interpreted option for updating translations at runtime
 - [x] Specific value matching (`=0 {no items}`)
+- [ ] Process configuration for lang / domain.
 - [ ] Lint plural/selectordinal/range to check cases covered
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?)
 - [x] Accept strings for plural/selectordinal/range

@@ -2,7 +2,7 @@ defmodule Polyglot.Compiler do
   alias Polyglot.Parser
   require Logger
 
-  def compile_string!(lang, key, string) do
+  def compile_string!(lang, domain, key, string) do
     Logger.debug "Compiling t!(#{inspect lang}, #{inspect key}, string)"
 
     stripped = String.strip(string)
@@ -10,7 +10,7 @@ defmodule Polyglot.Compiler do
     {:ok, parse_tree} = Parser.parse(stripped)
     ast = compile(parse_tree, %{lang: lang, args: args})
 
-    {[lang, key, args], ast}
+    {[lang, domain, key, args], ast}
   end
 
   defp clause(k, v) do

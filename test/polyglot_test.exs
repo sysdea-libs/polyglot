@@ -1,24 +1,25 @@
 defmodule PolyglotTest.C do
   use Polyglot
 
-  locale_string "en", "simple", "My simple string."
+  locale_string "en", "default", "simple", "My simple string."
+  locale_string "en", "app", "simple", "My simple client-side string."
 
-  locale_string "en", "interpolate", "Hello {NAME}."
+  locale_string "en", "default", "interpolate", "Hello {NAME}."
 
-  locale_string "en", "plural", """
+  locale_string "en", "default", "plural", """
   {num, plural,
      =0 {no items}
     one {one item}
   other {# items}}
   """
 
-  locale_string "en", "select fallthrough", """
+  locale_string "en", "default", "select fallthrough", """
   {taxableArea, select,
             yes {An additional tax will be collected.}
           other {No taxes apply.}}
   """
 
-  locale_string "en", "select+plural", """
+  locale_string "en", "default", "select+plural", """
   {gender, select,
       male {He}
     female {She}
@@ -32,7 +33,7 @@ defmodule PolyglotTest.C do
              }}.
   """
 
-  locale_string "de", "select+plural", """
+  locale_string "de", "default", "select+plural", """
   {GENDER, select,
       male {Er}
     female {Sie}
@@ -46,7 +47,7 @@ defmodule PolyglotTest.C do
             }.
   """
 
-  locale_string "en", "ordinal", """
+  locale_string "en", "default", "ordinal", """
   You came in {place, selectordinal,
                    =0 {best}
                   one {#st}
@@ -55,7 +56,7 @@ defmodule PolyglotTest.C do
                 other {#th}} place.
   """
 
-  locale_string "cs", "range", """
+  locale_string "cs", "default", "range", """
   {range, range,
       one {# den}
       few {# dny}
@@ -63,21 +64,22 @@ defmodule PolyglotTest.C do
     other {# dní}}.
   """
 
-  locale "en", Path.join(__DIR__, "/fixtures/en.lang")
+  load_directory Path.join(__DIR__, "/fixtures")
 end
 
 defmodule PolyglotTest do
   use ExUnit.Case
 
   defp run(lang, key, args \\ %{}) do
-    PolyglotTest.C.t!(lang, key, args)
+    PolyglotTest.C.lt!(lang, key, args)
     |> :erlang.iolist_to_binary
     |> String.strip
   end
 
   test "function_from_string simple strings" do
-    assert PolyglotTest.C.t!("en", "simple") == ["My simple string."]
-    assert PolyglotTest.C.t!("en", "interpolate", %{"name" => "Chris"})
+    assert PolyglotTest.C.t!("simple") == ["My simple string."]
+    assert PolyglotTest.C.dt!("app", "simple") == ["My simple client-side string."]
+    assert PolyglotTest.C.t!("interpolate", %{"name" => "Chris"})
            == ["Hello ", "Chris", "."]
   end
 
@@ -147,11 +149,17 @@ defmodule PolyglotTest do
            == "2-3,50 dne."
     assert run("cs", "range", %{"range" => {0,5}})
            == "0-5 dní."
+
+    PolyglotTest.C.locale("cs")
+    assert to_string(PolyglotTest.C.t!("range", %{"range" => {0,5}}))
+           == "0-5 dní."
   end
 
   test "function_from_file" do
     assert run("en", "test message")
            == "Hello from the translator."
+    assert PolyglotTest.C.dt!("app", "test message")
+           == ["Hello from the app."]
     assert run("en", "test message 2", %{"num" => 3})
            == "3 items"
   end
