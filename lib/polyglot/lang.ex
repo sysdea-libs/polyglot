@@ -14,7 +14,7 @@ defmodule Polyglot.Lang do
         {messages, String.strip(newname), ""}
       {<<"@", newname::binary>>, {messages, name, buffer}} ->
         {[{name, String.strip(buffer)}|messages], String.strip(newname), ""}
-      {<<"--", _::binary>>, state} ->
+      {<<";", _::binary>>, state} ->
         state
       {_, {_, nil, nil}=state} ->
         state
