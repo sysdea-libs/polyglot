@@ -17,7 +17,7 @@ defmodule Polyglot do
     quote bind_quoted: binding do
       {args, body} = Polyglot.Compiler.compile_string!(lang, key, string)
       @plurals lang
-      def t!(unquote_splicing(args)), do: to_string(unquote(body))
+      def t!(unquote_splicing(args)), do: unquote(body)
     end
   end
 

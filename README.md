@@ -88,9 +88,15 @@ The argument for a range should be a tuple of two numbers {a, b} and will be pri
 
 ## Parameters
 
+## Input
+
 Parameters for a string should be provided in a map with string keys. The names are downcased from their definitions inside the translation files. When providing numbers, you can provide any of integer, float or string. If you need a number formatted, especially decimals, you should format them as a string prior to calling.
 
 Polyglot currently has no knowledge of decimal rules, and will treat either `.` or `,` as the decimal separator when found. It is therefore incompatible with numbers formatted with thousands separators such as `1,234.56`.
+
+## Output
+
+Polyglot returns iolists for efficiency, so if you require a single binary output you should call `to_string` on the result of a call. Many Erlang/Elixir APIs accept iolists in addition to simple binaries, so you should use the iolist form where possible.
 
 ## Ahead of time compilation
 
