@@ -13,15 +13,30 @@ defmodule Polyglot.Compiler do
     {[lang, key, args], ast}
   end
 
+  defp clause(k, v) do
+    {:->, [], [[k], v]}
+  end
+
   # Formatter compilers
   def compile({:select, arg, m}, env) do
     accessor = quote do
       unquote(env.args)[unquote(arg)]
     end
+    printer = quote do: to_string(unquote(accessor))
 
-    clauses = Enum.map(m, fn({k, v}) ->
-      {:->, [], [[k], compile(v, env)]}
-    end)
+    env = Map.put(env, :printer, printer)
+    clauses = for {k, v} <- m, do: clause(k, compile(v, env))
+
+    fallthrough = case m["other"] do
+      nil ->
+        quote do
+          ["{Unknown SELECT option `", unquote(printer), "` with arg `", unquote(arg), "`}"]
+        end
+      v ->
+        compile(v, env)
+    end
+
+    clauses = clauses ++ [clause(Macro.var(:_, :polyglot), fallthrough)]
 
     quote do
       case unquote(accessor) do
@@ -35,9 +50,8 @@ defmodule Polyglot.Compiler do
     end
     printer = quote do: to_string(unquote(accessor))
 
-    clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
-    end)
+    env = Map.put(env, :printer, printer)
+    clauses = for {k, v} <- m, do: clause(k, compile(v, env))
 
     quote do
       case Polyglot.Plural.pluralise(unquote(env.lang), :ordinal, unquote(accessor)) do
@@ -51,9 +65,8 @@ defmodule Polyglot.Compiler do
     end
     printer = quote do: to_string(unquote(accessor))
 
-    clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
-    end)
+    env = Map.put(env, :printer, printer)
+    clauses = for {k, v} <- m, do: clause(k, compile(v, env))
 
     quote do
       case Polyglot.Plural.pluralise(unquote(env.lang), :cardinal, unquote(accessor)) do
@@ -67,9 +80,8 @@ defmodule Polyglot.Compiler do
     end
     printer = quote do: Polyglot.Compiler.format_range(unquote(accessor))
 
-    clauses = Enum.map(m, fn({ k, v }) ->
-      {:->, [], [[k], compile(v, Map.put(env, :printer, printer))]}
-    end)
+    env = Map.put(env, :printer, printer)
+    clauses = for {k, v} <- m, do: clause(k, compile(v, env))
 
     quote do
       case Polyglot.Plural.pluralise(unquote(env.lang), :range, unquote(accessor)) do

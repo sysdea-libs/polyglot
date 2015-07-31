@@ -11,6 +11,12 @@ defmodule PolyglotTest.C do
   other {# items}}
   """
 
+  locale_string "en", "select fallthrough", """
+  {taxableArea, select,
+            yes {An additional tax will be collected.}
+          other {No taxes apply.}}
+  """
+
   locale_string "en", "select+plural", """
   {gender, select,
       male {He}
@@ -88,6 +94,13 @@ defmodule PolyglotTest do
            == "1.5 items"
     assert run("en", "plural", %{"num" => "1.50"})
            == "1.50 items"
+  end
+
+  test "function_from_string fallthrough select" do
+    assert run("en", "select fallthrough", %{"taxablearea" => "yes"})
+           == "An additional tax will be collected."
+    assert run("en", "select fallthrough", %{"taxablearea" => "no"})
+           == "No taxes apply."
   end
 
   test "function_from_string select/plural functions" do

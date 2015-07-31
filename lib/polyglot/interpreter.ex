@@ -11,7 +11,12 @@ defmodule Polyglot.Interpreter do
     v = Map.get(args, arg)
     case Map.get(m, v) do
       nil ->
-        ["{Unknown SELECT option `", v, "`}"]
+        case Map.get(m, "other") do
+          nil ->
+            ["{Unknown SELECT option `", to_string(v), "` with arg `", arg, "`}"]
+          node ->
+            interpret_ast(node, %{env | printer: v}, args)
+        end
       node ->
         interpret_ast(node, %{env | printer: v}, args)
     end

@@ -1,17 +1,17 @@
 defmodule InterpreterTest do
   use ExUnit.Case
 
-  def interpret(lang, str, args \\ %{}) do
+  defp interpret(lang, str, args) do
     Polyglot.Interpreter.interpret(lang, str, args)
     |> :erlang.iolist_to_binary
     |> String.strip
   end
 
   test "interpreted simple strings" do
-    assert interpret("en", "My simple string.")
-           == "My simple string."
-    assert interpret("en", "Hello {name}.", %{"name" => "Chris"})
-           == "Hello Chris."
+    assert Polyglot.Interpreter.interpret("en", "My simple string.")
+           == ["My simple string."]
+    assert Polyglot.Interpreter.interpret("en", "Hello {name}.", %{"name" => "Chris"})
+           == ["Hello ", "Chris", "."]
   end
 
   test "interpret plural" do
@@ -35,6 +35,19 @@ defmodule InterpreterTest do
            == "1.5 items"
     assert interpret("en", str, %{"num" => "1.50"})
            == "1.50 items"
+  end
+
+  test "interpret fallthrough select" do
+    str = """
+    {taxableArea, select,
+              yes {An additional tax will be collected.}
+            other {No taxes apply.}}
+    """
+
+    assert interpret("en", str, %{"taxablearea" => "yes"})
+           == "An additional tax will be collected."
+    assert interpret("en", str, %{"taxablearea" => "no"})
+           == "No taxes apply."
   end
 
   test "interpret select/plural" do
