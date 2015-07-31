@@ -38,15 +38,25 @@ SelectFormat is the simplest formatter included, and simply selects from several
 
 ## PluralFormat
 
-PluralFormat is for cardinal pluralisation, such as "3 items", "1 item". The plural rules are compiled as needed from the [CLDR Language Plural Rules](http://www.unicode.org/cldr/charts/26/supplemental/language_plural_rules.html) (which are also used for OrdinalFormat and RangeFormat). All possibilities for a language must be covered in a given translation.
+PluralFormat is for cardinal pluralisation, such as "3 items", "1 item". The plural rules are compiled from the [CLDR Language Plural Rules](http://www.unicode.org/cldr/charts/26/supplemental/language_plural_rules.html) (which are also used for OrdinalFormat and RangeFormat). All possibilities for a language must be covered in a given translation.
+
+You can use the `=value` syntax where you would like to special case an input, a common case being for 0 as shown in the example below.
 
 ```
 {NUM, plural,
   one {One item}
 other {# items}}.
 
+# %{"num" => 0} => "0 items."
 # %{"num" => 1} => "One item."
 # %{"num" => 3} => "3 items."
+
+{NUM, plural,
+   =0 {No items}
+  one {One item}
+other {# items}}.
+
+# %{"num" => 0} => "No items."
 ```
 
 ## OrdinalFormat
@@ -181,7 +191,7 @@ Polyglot.Interpreter.interpet("en", "Hello {name}!", %{"name" => "John"})
 - [x] Range pluralisation
 - [x] Compile from standalone files as well as embedded strings
 - [x] Interpreted option for updating translations at runtime
-- [ ] Specific value matching (`=0 {no items}`)
+- [x] Specific value matching (`=0 {no items}`)
 - [ ] Lint plural/selectordinal/range to check cases covered
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?)
 - [x] Accept strings for plural/selectordinal/range

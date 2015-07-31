@@ -17,10 +17,13 @@ defmodule InterpreterTest do
   test "interpret plural" do
     str = """
     {num, plural,
+       =0 {no items}
       one {one item}
     other {# items}}
     """
 
+    assert interpret("en", str, %{"num" => 0})
+           == "no items"
     assert interpret("en", str, %{"num" => 5})
            == "5 items"
     assert interpret("en", str, %{"num" => "5"})
@@ -103,12 +106,15 @@ defmodule InterpreterTest do
   test "function_from_string ordinal" do
     str = """
     You came in {place, selectordinal,
+                     =0 {best}
                     one {#st}
                     two {#nd}
                     few {#rd}
                   other {#th}} place.
     """
 
+    assert interpret("en", str, %{"place" => 0})
+           == "You came in best place."
     assert interpret("en", str, %{"place" => 1})
            == "You came in 1st place."
     assert interpret("en", str, %{"place" => 22})

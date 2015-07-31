@@ -25,9 +25,14 @@ defmodule Polyglot.Interpreter do
   def interpret_ast({:plural, arg, m}, env, args) do
     v = Map.get(args, arg)
     p = pluralise(env.lang, :cardinal, v)
-    case Map.get(m, p) do
+    case Map.get(m, "=#{v}") do
       nil ->
-        ["{Uncovered PLURAL result `", p, "` from `", v, "`}"]
+        case Map.get(m, p) do
+          nil ->
+            ["{Uncovered PLURAL result `", p, "` from `", v, "`}"]
+          node ->
+            interpret_ast(node, %{env | printer: to_string(v)}, args)
+        end
       node ->
         interpret_ast(node, %{env | printer: to_string(v)}, args)
     end
@@ -36,9 +41,14 @@ defmodule Polyglot.Interpreter do
   def interpret_ast({:ordinal, arg, m}, env, args) do
     v = Map.get(args, arg)
     p = pluralise(env.lang, :ordinal, v)
-    case Map.get(m, p) do
+    case Map.get(m, "=#{v}") do
       nil ->
-        ["{Uncovered ORDINAL result `", p, "` from `", v, "`}"]
+        case Map.get(m, p) do
+          nil ->
+            ["{Uncovered ORDINAL result `", p, "` from `", v, "`}"]
+          node ->
+            interpret_ast(node, %{env | printer: to_string(v)}, args)
+        end
       node ->
         interpret_ast(node, %{env | printer: to_string(v)}, args)
     end

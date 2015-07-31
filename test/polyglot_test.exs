@@ -7,6 +7,7 @@ defmodule PolyglotTest.C do
 
   locale_string "en", "plural", """
   {num, plural,
+     =0 {no items}
     one {one item}
   other {# items}}
   """
@@ -47,6 +48,7 @@ defmodule PolyglotTest.C do
 
   locale_string "en", "ordinal", """
   You came in {place, selectordinal,
+                   =0 {best}
                   one {#st}
                   two {#nd}
                   few {#rd}
@@ -80,6 +82,8 @@ defmodule PolyglotTest do
   end
 
   test "function_from_string plural" do
+    assert run("en", "plural", %{"num" => 0})
+           == "no items"
     assert run("en", "plural", %{"num" => 5})
            == "5 items"
     assert run("en", "plural", %{"num" => "5"})
@@ -122,6 +126,8 @@ defmodule PolyglotTest do
   end
 
   test "function_from_string ordinal" do
+    assert run("en", "ordinal", %{"place" => 0})
+           == "You came in best place."
     assert run("en", "ordinal", %{"place" => 1})
            == "You came in 1st place."
     assert run("en", "ordinal", %{"place" => 22})
