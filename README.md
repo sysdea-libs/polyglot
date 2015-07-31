@@ -4,6 +4,8 @@ An implementation of a MessageFormat-like string interpolator (PluralFormat + Se
 
 Polyglot is useful even if your needs are currently monolingual, for instance consider correctly producing the string "You are the 22nd visitor". A pleasant side-effect of solving that formatting can be making your application at least partly translation ready in the future.
 
+This library aims to be compatible with [Format.JS](http://formatjs.io/) message formats so that there is consistent translation for client and server.
+
 ## Stability
 
 Polyglot is still in the early stages of development. Although the general syntax is fixed, the API is still open to change.
@@ -17,7 +19,7 @@ Provides no formatting other than ensuring that the parameter is printed as a st
 ```
 Hello {NAME}.
 
-# %{name: "Chris"} => "Hello Chris."
+# %{"name" => "Chris"} => "Hello Chris."
 ```
 
 ## SelectFormat
@@ -30,8 +32,8 @@ SelectFormat is the simplest formatter included, and simply selects from several
   female {She is}
    other {They are}} great!
 
-# %{gender: "male"}  => "He is great!"
-# %{gender: "other"} => "They are great!"
+# %{"gender" => "male"}  => "He is great!"
+# %{"gender" => "other"} => "They are great!"
 ```
 
 ## PluralFormat
@@ -43,8 +45,8 @@ PluralFormat is for cardinal pluralisation, such as "3 items", "1 item". The plu
   one {One item}
 other {# items}}.
 
-# %{num: 1} => "One item."
-# %{num: 3} => "3 items."
+# %{"num" => 1} => "One item."
+# %{"num" => 3} => "3 items."
 ```
 
 ## OrdinalFormat
@@ -58,9 +60,9 @@ You came in {PLACE, ordinal,
                 few {#rd}
               other {#th}} place.
 
-# %{place: 2}  => "You came in 2nd place."
-# %{place: 12} => "You came in 12th place."
-# %{place: 22} => "You came in 22nd place."
+# %{"place" => 2}  => "You came in 2nd place."
+# %{"place" => 12} => "You came in 12th place."
+# %{"place" => 22} => "You came in 22nd place."
 ```
 
 ## RangeFormat
@@ -74,10 +76,10 @@ RangeFormat is where you have a range between two numbers, which then needs a pl
    many {# dne}
   other {# dní}}.
 
-# %{range: {0, 1}}      => "0-1 den."
-# %{range: {2, 4}}      => "2-4 dny."
-# %{range: {2, "3,50"}} => "2-3,50 dne."
-# %{range: {0, 5}}      => "0-5 dní."
+# %{"range" => {0, 1}}      => "0-1 den."
+# %{"range" => {2, 4}}      => "2-4 dny."
+# %{"range" => {2, "3,50"}} => "2-3,50 dne."
+# %{"range" => {0, 5}}      => "0-5 dní."
 ```
 
 The argument for a range should be a tuple of two numbers {a, b} and will be printed as `a-b`, substituting the `#`.
@@ -104,7 +106,7 @@ defmodule I18n do
 
   locale_string "en", "simple", "My simple string."
 
-  locale_string "en", "interpolate", "Hello \#{NAME}."
+  locale_string "en", "interpolate", "Hello {NAME}."
 
   locale_string "en", "plural", """
   {NUM, plural,
@@ -116,10 +118,10 @@ end
 I18n.t!("en", "simple")
 # => "My simple string."
 
-I18n.t!("en", "interpolate", %{name: "Chris"})
+I18n.t!("en", "interpolate", %{"name" => "Chris"})
 # => "Hello Chris."
 
-I18n.t!("en", "plural", %{num: 5})
+I18n.t!("en", "plural", %{"num" => 5})
 # => "5 items."
 ```
 
@@ -151,13 +153,18 @@ end
 I18n.t!("en", "test message")
 # => "Hello from the translator."
 
-I18n.t!("en", "test message 2", %{num: 5})
+I18n.t!("en", "test message 2", %{"num" => 5})
 # => "5 items."
 ```
 
 ## Interpreted
 
-TODO.
+There is also an interpreter for when you have dynamic template strings (e.g. from a database).
+
+```
+Polyglot.Interpreter.interpet("en", "Hello {name}!", %{"name" => "John"})
+# => "Hello John!"
+```
 
 # Roadmap
 
@@ -167,10 +174,12 @@ TODO.
 - [x] Ordinal pluralisation
 - [x] Range pluralisation
 - [x] Compile from standalone files as well as embedded strings
-- [ ] Interpreted option for updating translations at runtime.
-- [ ] Lint plural/ordinal/range to check cases covered.
-- [ ] Lint select cases somehow (maybe by comparing to a canonical language?).
-- [x] Accept strings for plural/ordinal/range.
-- [x] Deal with differing decimal marks.
+- [x] Interpreted option for updating translations at runtime
+- [ ] Specific value matching (`=0 {no items}`)
+- [ ] Lint plural/ordinal/range to check cases covered
+- [ ] Lint select cases somehow (maybe by comparing to a canonical language?)
+- [x] Accept strings for plural/ordinal/range
+- [x] Deal with differing decimal marks
 - [ ] Utility helpers for number formatting based on locale? (NumberFormat-ish?)
-- [ ] Compile to JavaScript.
+- [ ] Compile to JavaScript (for use by [Format.JS](http://formatjs.io/))
+- [ ] PO file support
