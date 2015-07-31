@@ -40,7 +40,7 @@ defmodule PolyglotTest.C do
   """
 
   locale_string "en", "ordinal", """
-  You came in {place, ordinal,
+  You came in {place, selectordinal,
                   one {#st}
                   two {#nd}
                   few {#rd}

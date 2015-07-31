@@ -47,7 +47,7 @@ defmodule Polyglot.Parser do
 
         method = case String.strip(method) do
           "select" -> :select
-          "ordinal" -> :ordinal
+          "selectordinal" -> :ordinal
           "plural" -> :plural
           "range" -> :range
         end

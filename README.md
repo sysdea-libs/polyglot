@@ -1,6 +1,6 @@
 # Polyglot
 
-An implementation of a MessageFormat-like string interpolator (PluralFormat + SelectFormat) in Elixir, for the purposes of translation when plural and gender forms are needed, especially when used together inside sentences ("She found 3 categories in one result"). Features ordinal/range extensions in addition to cardinal plurality and selection.
+An implementation of a MessageFormat-like string interpolator (PluralFormat + SelectFormat) in Elixir, for the purposes of translation when plural and gender forms are needed, especially when used together inside sentences ("She found 3 categories in one result"). Features selectordinal/range extensions in addition to cardinal plurality and selection.
 
 Polyglot is useful even if your needs are currently monolingual, for instance consider correctly producing the string "You are the 22nd visitor". A pleasant side-effect of solving that formatting can be making your application at least partly translation ready in the future.
 
@@ -54,7 +54,7 @@ other {# items}}.
 OrdinalFormat is the same as PluralFormat, but for ordered numbers, e.g. `1st`.
 
 ```
-You came in {PLACE, ordinal,
+You came in {PLACE, selectordinal,
                 one {#st}
                 two {#nd}
                 few {#rd}
@@ -176,9 +176,9 @@ Polyglot.Interpreter.interpet("en", "Hello {name}!", %{"name" => "John"})
 - [x] Compile from standalone files as well as embedded strings
 - [x] Interpreted option for updating translations at runtime
 - [ ] Specific value matching (`=0 {no items}`)
-- [ ] Lint plural/ordinal/range to check cases covered
+- [ ] Lint plural/selectordinal/range to check cases covered
 - [ ] Lint select cases somehow (maybe by comparing to a canonical language?)
-- [x] Accept strings for plural/ordinal/range
+- [x] Accept strings for plural/selectordinal/range
 - [x] Deal with differing decimal marks
 - [ ] Utility helpers for number formatting based on locale? (NumberFormat-ish?)
 - [ ] Compile to JavaScript (for use by [Format.JS](http://formatjs.io/))

@@ -89,7 +89,7 @@ defmodule InterpreterTest do
 
   test "function_from_string ordinal" do
     str = """
-    You came in {place, ordinal,
+    You came in {place, selectordinal,
                     one {#st}
                     two {#nd}
                     few {#rd}
